@@ -21,15 +21,35 @@ export const links: LinksFunction = () => [
 
 export default function App() {
   return (
-    <html lang="en">
+    <html lang="en" className="dark h-full overflow-x-hidden">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body>
-        <Outlet />
+      <body className="flex h-full flex-col justify-between bg-background text-foreground">
+        <header className="container mx-auto py-6">
+          <nav className="flex justify-between">
+            <div>
+              <div className="font-light">epic</div>
+              <div className="font-bold">notes</div>
+            </div>
+          </nav>
+        </header>
+
+        <div className="flex-1">
+          <Outlet />
+        </div>
+
+        <div className="container mx-auto flex justify-between">
+          <div>
+            <div className="font-light">epic</div>
+            <div className="font-bold">notes</div>
+          </div>
+          <p>Built with ♥️ by robledotdev</p>
+        </div>
+        <div className="h-5" />
         <ScrollRestoration />
         <Scripts />
         <LiveReload />
