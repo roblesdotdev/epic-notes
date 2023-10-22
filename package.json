@@ -11,7 +11,9 @@
     "prettier": "prettier --ignore-path .gitignore \"**/*.+(js|jsx|css|ts|tsx)\"",
     "format": "npm run prettier -- --list-different",
     "format:write": "npm run prettier -- --write",
-    "lint": "eslint --cache --cache-location ./node_modules/.cache/.eslintcache --ignore-path .gitignore --ext js,jsx,ts,tsx ."
+    "lint": "eslint --cache --cache-location ./node_modules/.cache/.eslintcache --ignore-path .gitignore --ext js,jsx,ts,tsx .",
+    "prepare": "husky install",
+    "validate": "run-s typecheck lint"
   },
   "dependencies": {
     "@remix-run/css-bundle": "^2.1.0",
@@ -31,6 +33,8 @@
     "eslint": "^8.38.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.1",
+    "husky": "^8.0.3",
+    "npm-run-all": "^4.1.5",
     "postcss": "^8.4.31",
     "prettier": "^3.0.3",
     "tailwindcss": "^3.3.3",
