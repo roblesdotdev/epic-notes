@@ -8,8 +8,14 @@ import {
   Scripts,
   ScrollRestoration,
 } from '@remix-run/react'
+import iconAssetUrl from './assets/favicon.svg'
+import fontStyles from './styles/fonts.css'
+import tailwindStyles from './styles/tailwind.css'
 
 export const links: LinksFunction = () => [
+  { rel: 'icon', type: 'image+svg', href: iconAssetUrl },
+  { rel: 'stylesheet', href: fontStyles },
+  { rel: 'stylesheet', href: tailwindStyles },
   ...(cssBundleHref ? [{ rel: 'stylesheet', href: cssBundleHref }] : []),
 ]
 
