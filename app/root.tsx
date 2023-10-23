@@ -1,5 +1,6 @@
 import { cssBundleHref } from '@remix-run/css-bundle'
-import { json, type LinksFunction } from '@remix-run/node'
+import { json } from '@remix-run/node'
+import type { MetaFunction, LinksFunction } from '@remix-run/node'
 import {
   Link,
   Links,
@@ -26,13 +27,20 @@ export async function loader() {
   return json({ ENV: getEnv() })
 }
 
+export const meta: MetaFunction = () => {
+  return [
+    { title: 'Epic Notes' },
+    { name: 'description', content: "Your own captain's log" },
+  ]
+}
+
 export default function App() {
   const data = useLoaderData<typeof loader>()
   return (
     <html lang="en" className="dark h-full overflow-x-hidden">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
         <Meta />
         <Links />
       </head>

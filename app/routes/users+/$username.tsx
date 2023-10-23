@@ -1,4 +1,4 @@
-import type { LoaderFunctionArgs } from '@remix-run/node'
+import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
 import { db } from '~/utils/db.server.ts'
@@ -12,6 +12,14 @@ export async function loader({ params }: LoaderFunctionArgs) {
   return json({
     user: { name: user.name, username: user.username },
   })
+}
+
+export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
+  const displayName = data?.user.name ?? params.username
+  return [
+    { title: `${displayName} | Epic Notes` },
+    { name: 'description', content: `Profile of ${displayName} on Epic Notes` },
+  ]
 }
 
 export default function KodyProfileRoute() {
