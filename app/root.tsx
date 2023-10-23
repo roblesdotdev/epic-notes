@@ -1,5 +1,5 @@
 import { cssBundleHref } from '@remix-run/css-bundle'
-import type { LinksFunction } from '@remix-run/node'
+import { json, type LinksFunction } from '@remix-run/node'
 import {
   Link,
   Links,
@@ -8,10 +8,12 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from '@remix-run/react'
 import iconAssetUrl from './assets/favicon.svg'
 import fontStyles from './styles/fonts.css'
 import tailwindStyles from './styles/tailwind.css'
+import { getEnv } from './utils/env.server.ts'
 
 export const links: LinksFunction = () => [
   { rel: 'icon', type: 'image+svg', href: iconAssetUrl },
@@ -20,7 +22,12 @@ export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: 'stylesheet', href: cssBundleHref }] : []),
 ]
 
+export async function loader() {
+  return json({ ENV: getEnv() })
+}
+
 export default function App() {
+  const data = useLoaderData<typeof loader>()
   return (
     <html lang="en" className="dark h-full overflow-x-hidden">
       <head>
@@ -55,6 +62,11 @@ export default function App() {
         </div>
         <div className="h-5" />
         <ScrollRestoration />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.ENV = ${JSON.stringify(data.ENV)}`,
+          }}
+        />
         <Scripts />
         <LiveReload />
       </body>

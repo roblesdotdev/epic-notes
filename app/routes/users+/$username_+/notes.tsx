@@ -1,8 +1,8 @@
 import type { LoaderFunctionArgs } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { Link, NavLink, Outlet, useLoaderData } from '@remix-run/react'
-import { db } from '~/utils/db.server'
-import { cn, invariantResponse } from '~/utils/misc'
+import { db } from '~/utils/db.server.ts'
+import { cn, invariantResponse } from '~/utils/misc.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const username = params.username
@@ -43,6 +43,8 @@ export default function NotesRoute() {
                 <li className="p-1 pr-0" key={note.id}>
                   <NavLink
                     to={note.id}
+                    preventScrollReset
+                    prefetch="intent"
                     className={({ isActive }) =>
                       cn(navLinkDefaultClassName, isActive && 'bg-accent')
                     }

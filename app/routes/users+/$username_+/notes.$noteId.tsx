@@ -1,10 +1,10 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node'
 import { json, redirect } from '@remix-run/node'
 import { Form, Link, useLoaderData } from '@remix-run/react'
-import { floatingToolbarClassName } from '~/components/floating-toolbar'
-import { Button } from '~/components/ui/button'
-import { db } from '~/utils/db.server'
-import { invariantResponse } from '~/utils/misc'
+import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
+import { Button } from '~/components/ui/button.tsx'
+import { db } from '~/utils/db.server.ts'
+import { invariantResponse } from '~/utils/misc.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const noteId = params.noteId

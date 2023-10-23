@@ -1,13 +1,18 @@
 import { json, redirect } from '@remix-run/node'
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node'
-import { Form, useLoaderData } from '@remix-run/react'
-import { floatingToolbarClassName } from '~/components/floating-toolbar'
-import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
-import { Textarea } from '~/components/ui/textarea'
-import { db } from '~/utils/db.server'
-import { invariantResponse } from '~/utils/misc'
+import {
+  Form,
+  useFormAction,
+  useLoaderData,
+  useNavigation,
+} from '@remix-run/react'
+import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
+import { Button } from '~/components/ui/button.tsx'
+import { Input } from '~/components/ui/input.tsx'
+import { Label } from '~/components/ui/label.tsx'
+import { Textarea } from '~/components/ui/textarea.tsx'
+import { db } from '~/utils/db.server.ts'
+import { invariantResponse } from '~/utils/misc.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const note = db.note.findFirst({
@@ -45,6 +50,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function NoteEdit() {
   const data = useLoaderData<typeof loader>()
+  // Pending UI
+  const navigation = useNavigation()
+  const formAction = useFormAction()
+  const isSubmitting =
+    navigation.state !== 'idle' &&
+    navigation.formMethod === 'POST' &&
+    navigation.formAction === formAction
 
   return (
     <Form
@@ -66,7 +78,9 @@ export default function NoteEdit() {
         <Button variant="destructive" type="reset">
           Reset
         </Button>
-        <Button type="submit">Submit</Button>
+        <Button disabled={isSubmitting} type="submit">
+          Submit
+        </Button>
       </div>
     </Form>
   )

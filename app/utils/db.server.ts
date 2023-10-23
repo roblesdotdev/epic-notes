@@ -5,7 +5,7 @@
  */
 import crypto from 'crypto'
 import { factory, manyOf, nullable, oneOf, primaryKey } from '@mswjs/data'
-import { singleton } from './singleton.server'
+import { singleton } from './singleton.server.ts'
 
 const getId = () => crypto.randomBytes(16).toString('hex').slice(0, 8)
 
