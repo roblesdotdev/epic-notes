@@ -1,10 +1,28 @@
-import { Link, NavLink, Outlet, useParams } from '@remix-run/react'
-import { cn } from '~/utils/misc'
+import type { LoaderFunctionArgs } from '@remix-run/node'
+import { json } from '@remix-run/node'
+import { Link, NavLink, Outlet, useLoaderData } from '@remix-run/react'
+import { db } from '~/utils/db.server'
+import { cn, invariantResponse } from '~/utils/misc'
+
+export async function loader({ params }: LoaderFunctionArgs) {
+  const username = params.username
+  const owner = db.user.findFirst({ where: { username: { equals: username } } })
+  invariantResponse(owner, 'Invalid username', { status: 404 })
+  const notes = db.note
+    .findMany({
+      where: { owner: { username: { equals: owner.username } } },
+    })
+    .map(({ id, title }) => ({ id, title }))
+  return json({
+    owner,
+    notes,
+  })
+}
 
 export default function NotesRoute() {
-  const params = useParams()
+  const data = useLoaderData<typeof loader>()
 
-  const ownerDisplayName = params.username
+  const ownerDisplayName = data.owner.name ?? data.owner.username
   const navLinkDefaultClassName =
     'line-clamp-2 block rounded-l-full py-2 pl-8 pr-6 text-base lg:text-xl'
   return (
@@ -13,7 +31,7 @@ export default function NotesRoute() {
         <div className="relative col-span-1">
           <div className="absolute inset-0 flex flex-col">
             <Link
-              to={`/users/${params.username}`}
+              to={`/users/${data.owner.username}`}
               className="pb-4 pl-8 pr-4 pt-12"
             >
               <h1 className="text-base font-bold md:text-lg lg:text-left lg:text-2xl">
@@ -21,16 +39,18 @@ export default function NotesRoute() {
               </h1>
             </Link>
             <ul className="overflow-y-auto overflow-x-hidden pb-12">
-              <li className="p-1 pr-0">
-                <NavLink
-                  to="some-note-id"
-                  className={({ isActive }) =>
-                    cn(navLinkDefaultClassName, isActive && 'bg-accent')
-                  }
-                >
-                  Some Note
-                </NavLink>
-              </li>
+              {data.notes.map(note => (
+                <li className="p-1 pr-0" key={note.id}>
+                  <NavLink
+                    to={note.id}
+                    className={({ isActive }) =>
+                      cn(navLinkDefaultClassName, isActive && 'bg-accent')
+                    }
+                  >
+                    {note.title}
+                  </NavLink>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
