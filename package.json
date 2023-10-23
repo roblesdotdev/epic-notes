@@ -28,6 +28,7 @@
     "tailwind-merge": "^1.14.0"
   },
   "devDependencies": {
+    "@mswjs/data": "^0.14.0",
     "@remix-run/dev": "^2.1.0",
     "@remix-run/eslint-config": "^2.1.0",
     "@types/react": "^18.2.20",
