@@ -1,6 +1,8 @@
 import type { LoaderFunctionArgs } from '@remix-run/node'
 import { json } from '@remix-run/node'
-import { useLoaderData } from '@remix-run/react'
+import { Link, useLoaderData } from '@remix-run/react'
+import { floatingToolbarClassName } from '~/components/floating-toolbar'
+import { Button } from '~/components/ui/button'
 import { db } from '~/utils/db.server'
 import { invariantResponse } from '~/utils/misc'
 
@@ -21,6 +23,12 @@ export default function SomeNoteId() {
         <p className="whitespace-break-spaces text-sm md:text-lg">
           {data.note.content}
         </p>
+      </div>
+      <div className={floatingToolbarClassName}>
+        <Button variant="destructive">Delete</Button>
+        <Button asChild>
+          <Link to="edit">Edit</Link>
+        </Button>
       </div>
     </div>
   )
