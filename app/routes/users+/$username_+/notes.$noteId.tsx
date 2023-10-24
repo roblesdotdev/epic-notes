@@ -10,6 +10,7 @@ import { Button } from '~/components/ui/button.tsx'
 import { db } from '~/utils/db.server.ts'
 import { invariantResponse } from '~/utils/misc.ts'
 import type { loader as notesLoader } from './notes.tsx'
+import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const noteId = params.noteId
@@ -75,5 +76,17 @@ export default function SomeNoteId() {
         </Button>
       </div>
     </div>
+  )
+}
+
+export function ErrorBoundary() {
+  return (
+    <GeneralErrorBoundary
+      statusHandlers={{
+        404: ({ params }) => (
+          <p>No note with the id "{params.noteId}" exists</p>
+        ),
+      }}
+    />
   )
 }

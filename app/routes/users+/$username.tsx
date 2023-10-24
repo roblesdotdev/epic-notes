@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
+import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { db } from '~/utils/db.server.ts'
 import { invariantResponse } from '~/utils/misc.ts'
 
@@ -32,5 +33,17 @@ export default function KodyProfileRoute() {
         Notes
       </Link>
     </div>
+  )
+}
+
+export function ErrorBoundary() {
+  return (
+    <GeneralErrorBoundary
+      statusHandlers={{
+        404: ({ params }) => (
+          <p>No user with the username "{params.username}" exists</p>
+        ),
+      }}
+    />
   )
 }
