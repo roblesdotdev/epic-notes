@@ -95,9 +95,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
   return redirect(`/users/${params.username}/notes/${params.noteId}`)
 }
 
-function ErrorList({ errors }: { errors?: Array<string> | null }) {
+function ErrorList({
+  id,
+  errors,
+}: {
+  id?: string
+  errors?: Array<string> | null
+}) {
   return errors?.length ? (
-    <ul className="flex flex-col gap-1">
+    <ul className="flex flex-col gap-1" id={id}>
       {errors.map((error, i) => (
         <li key={i} className="text-[10px] text-foreground-destructive">
           {error}
@@ -131,6 +137,12 @@ export default function NoteEdit() {
     actionData?.status === 'error' ? actionData.errors.fieldErrors : null
   const formErrors =
     actionData?.status === 'error' ? actionData.errors.formErrors : null
+  const formHasErrors = Boolean(formErrors?.length)
+  const formErrorId = formHasErrors ? 'form-error' : undefined
+  const titleHasErrors = Boolean(fieldErrors?.title.length)
+  const titleErrorId = titleHasErrors ? 'title-error' : undefined
+  const contentHasErrors = Boolean(fieldErrors?.content.length)
+  const contentErrorId = contentHasErrors ? 'content-error' : undefined
 
   return (
     <div className="absolute inset-0">
@@ -139,38 +151,46 @@ export default function NoteEdit() {
         className="flex h-full flex-col gap-y-4 overflow-x-hidden px-10 pb-28 pt-12"
         id={formId}
         noValidate={isHydrated}
+        aria-invalid={formHasErrors || undefined}
+        aria-describedby={formErrorId}
       >
         <div className="flex flex-col gap-1">
           <div>
-            <Label>Title</Label>
+            <Label htmlFor="input-title">Title</Label>
             <Input
               name="title"
+              id="input-title"
               defaultValue={data.note.title}
               required
               maxLength={titleMaxLength}
+              aria-invalid={titleHasErrors || undefined}
+              aria-describedby={titleErrorId}
+              autoFocus
             />
             <div className="min-h-[32px] px-4 pb-3 pt-1">
-              <ErrorList errors={fieldErrors?.title} />
+              <ErrorList id={titleErrorId} errors={fieldErrors?.title} />
             </div>
           </div>
           <div>
-            {/* 🦉 NOTE: this is not an accessible label, we'll get to that in the accessibility exercises */}
-            <Label>Content</Label>
+            <Label htmlFor="input-content">Content</Label>
             <Textarea
               name="content"
+              id="input-content"
               defaultValue={data.note.content}
               required
               maxLength={contentMaxLength}
+              aria-invalid={contentHasErrors || undefined}
+              aria-describedby={contentErrorId}
             />
             <div className="min-h-[32px] px-4 pb-3 pt-1">
-              <ErrorList errors={fieldErrors?.content} />
+              <ErrorList id={contentErrorId} errors={fieldErrors?.content} />
             </div>
           </div>
         </div>
-        <ErrorList errors={formErrors} />
+        <ErrorList id={formErrorId} errors={formErrors} />
       </Form>
       <div className={floatingToolbarClassName}>
-        <Button variant="destructive" type="reset">
+        <Button variant="destructive" type="reset" form={formId}>
           Reset
         </Button>
         <Button disabled={isSubmitting} type="submit" form={formId}>
