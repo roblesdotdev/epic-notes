@@ -7,7 +7,7 @@ import {
   useLoaderData,
   useNavigation,
 } from '@remix-run/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
 import { Button } from '~/components/ui/button.tsx'
@@ -124,6 +124,7 @@ export default function NoteEdit() {
   const actionData = useActionData<typeof action>()
   const formId = 'edit-form'
   const isHydrated = useHydrated()
+  const formRef = useRef<HTMLFormElement>(null)
   // Pending UI
   const navigation = useNavigation()
   const formAction = useFormAction()
@@ -144,6 +145,21 @@ export default function NoteEdit() {
   const contentHasErrors = Boolean(fieldErrors?.content.length)
   const contentErrorId = contentHasErrors ? 'content-error' : undefined
 
+  useEffect(() => {
+    const formEl = formRef.current
+    if (!formEl) return
+    if (actionData?.status !== 'error') return
+
+    if (formEl.matches('[aria-invalid="true"]')) {
+      formEl.focus()
+    } else {
+      const firstInvalid = formEl.querySelector('[aria-invalid="true"]')
+      if (firstInvalid instanceof HTMLElement) {
+        firstInvalid.focus()
+      }
+    }
+  }, [actionData])
+
   return (
     <div className="absolute inset-0">
       <Form
@@ -153,6 +169,8 @@ export default function NoteEdit() {
         noValidate={isHydrated}
         aria-invalid={formHasErrors || undefined}
         aria-describedby={formErrorId}
+        ref={formRef}
+        tabIndex={-1}
       >
         <div className="flex flex-col gap-1">
           <div>
