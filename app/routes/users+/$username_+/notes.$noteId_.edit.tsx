@@ -15,7 +15,7 @@ import { Input } from '~/components/ui/input.tsx'
 import { Label } from '~/components/ui/label.tsx'
 import { Textarea } from '~/components/ui/textarea.tsx'
 import { db } from '~/utils/db.server.ts'
-import { invariantResponse } from '~/utils/misc.ts'
+import { invariantResponse, useFocusInvalid } from '~/utils/misc.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const note = db.note.findFirst({
@@ -145,20 +145,7 @@ export default function NoteEdit() {
   const contentHasErrors = Boolean(fieldErrors?.content.length)
   const contentErrorId = contentHasErrors ? 'content-error' : undefined
 
-  useEffect(() => {
-    const formEl = formRef.current
-    if (!formEl) return
-    if (actionData?.status !== 'error') return
-
-    if (formEl.matches('[aria-invalid="true"]')) {
-      formEl.focus()
-    } else {
-      const firstInvalid = formEl.querySelector('[aria-invalid="true"]')
-      if (firstInvalid instanceof HTMLElement) {
-        firstInvalid.focus()
-      }
-    }
-  }, [actionData])
+  useFocusInvalid(formRef.current, actionData?.status === 'error')
 
   return (
     <div className="absolute inset-0">
@@ -174,10 +161,10 @@ export default function NoteEdit() {
       >
         <div className="flex flex-col gap-1">
           <div>
-            <Label htmlFor="input-title">Title</Label>
+            <Label htmlFor="note-title">Title</Label>
             <Input
               name="title"
-              id="input-title"
+              id="note-title"
               defaultValue={data.note.title}
               required
               maxLength={titleMaxLength}
@@ -190,10 +177,10 @@ export default function NoteEdit() {
             </div>
           </div>
           <div>
-            <Label htmlFor="input-content">Content</Label>
+            <Label htmlFor="note-content">Content</Label>
             <Textarea
               name="content"
-              id="input-content"
+              id="note-content"
               defaultValue={data.note.content}
               required
               maxLength={contentMaxLength}
