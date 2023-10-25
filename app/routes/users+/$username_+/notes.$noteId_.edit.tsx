@@ -1,7 +1,12 @@
 import { conform, useForm } from '@conform-to/react'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
-import { json, redirect } from '@remix-run/node'
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node'
+import {
+  json,
+  redirect,
+  unstable_createMemoryUploadHandler as createMemoryUploadHandler,
+  unstable_parseMultipartFormData as parseMultipartFormData,
+} from '@remix-run/node'
 import {
   Form,
   useActionData,
@@ -9,6 +14,7 @@ import {
   useLoaderData,
   useNavigation,
 } from '@remix-run/react'
+import { useState } from 'react'
 import { z } from 'zod'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
@@ -16,8 +22,8 @@ import { Button } from '~/components/ui/button.tsx'
 import { Input } from '~/components/ui/input.tsx'
 import { Label } from '~/components/ui/label.tsx'
 import { Textarea } from '~/components/ui/textarea.tsx'
-import { db } from '~/utils/db.server.ts'
-import { invariantResponse } from '~/utils/misc.ts'
+import { db, updateNote } from '~/utils/db.server.ts'
+import { cn, invariantResponse } from '~/utils/misc.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const note = db.note.findFirst({
@@ -34,28 +40,38 @@ export async function loader({ params }: LoaderFunctionArgs) {
     note: {
       title: note.title,
       content: note.content,
+      images: note.images.map(i => ({ id: i.id, altText: i.altText })),
     },
   })
 }
 
 const titleMaxLength = 100
 const contentMaxLength = 1000
+const MAX_UPLOAD_SIZE = 1024 * 1024 * 3 // 3MB
 
 const NoteEditionSchema = z.object({
   title: z.string({ required_error: 'Title is required' }).max(titleMaxLength),
   content: z
     .string({ required_error: 'Content is required' })
     .max(contentMaxLength),
+  imageId: z.string().optional(),
+  file: z.instanceof(File).refine(file => {
+    return file.size <= MAX_UPLOAD_SIZE
+  }, `File size must be less than 3MB`),
+  altText: z.string().optional(),
 })
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const formData = await request.formData()
+  invariantResponse(params.noteId, 'noteId param is required')
+
+  const formData = await parseMultipartFormData(
+    request,
+    createMemoryUploadHandler({ maxPartSize: MAX_UPLOAD_SIZE }),
+  )
 
   const submission = parse(formData, {
     schema: NoteEditionSchema,
   })
-
-  console.log(submission)
 
   if (!submission.value) {
     return json({ status: 'error', submission } as const, {
@@ -63,13 +79,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
     })
   }
 
-  const { title, content } = submission.value
+  const { title, content, file, imageId, altText } = submission.value
 
-  db.note.update({
-    where: {
-      id: { equals: params.noteId },
-    },
-    data: { title, content },
+  updateNote({
+    id: params.noteId,
+    title,
+    content,
+    images: [{ file, id: imageId, altText }],
   })
 
   return redirect(`/users/${params.username}/notes/${params.noteId}`)
@@ -123,6 +139,7 @@ export default function NoteEdit() {
         method="POST"
         className="flex h-full flex-col gap-y-4 overflow-x-hidden px-10 pb-28 pt-12"
         {...form.props}
+        encType="multipart/form-data"
       >
         <div className="flex flex-col gap-1">
           <div>
@@ -145,6 +162,10 @@ export default function NoteEdit() {
               />
             </div>
           </div>
+          <div>
+            <Label>Image</Label>
+            <ImageChooser image={data.note.images[0]} />
+          </div>
         </div>
         <ErrorList id={form.errorId} errors={form.errors} />
       </Form>
@@ -157,6 +178,89 @@ export default function NoteEdit() {
         </Button>
       </div>
     </div>
+  )
+}
+
+function ImageChooser({
+  image,
+}: {
+  image?: { id: string; altText?: string | null }
+}) {
+  const existingImage = Boolean(image)
+  const [previewImage, setPreviewImage] = useState<string | null>(
+    existingImage ? `/resources/images/${image?.id}` : null,
+  )
+  const [altText, setAltText] = useState(image?.altText ?? '')
+
+  return (
+    <fieldset>
+      <div className="flex gap-3">
+        <div className="w-32">
+          <div className="relative h-32 w-32">
+            <label
+              htmlFor="image-input"
+              className={cn('group absolute h-32 w-32 rounded-lg', {
+                'bg-accent opacity-40 focus-within:opacity-100 hover:opacity-100':
+                  !previewImage,
+                'cursor-pointer focus-within:ring-4': !existingImage,
+              })}
+            >
+              {previewImage ? (
+                <div className="relative">
+                  <img
+                    src={previewImage}
+                    alt={altText ?? ''}
+                    className="h-32 w-32 rounded-lg object-cover"
+                  />
+                  {existingImage ? null : (
+                    <div className="pointer-events-none absolute -right-0.5 -top-0.5 rotate-12 rounded-sm bg-secondary px-2 py-1 text-xs text-secondary-foreground shadow-md">
+                      new
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex h-32 w-32 items-center justify-center rounded-lg border border-muted-foreground text-4xl text-muted-foreground">
+                  ➕
+                </div>
+              )}
+              {existingImage ? (
+                <input name="imageId" type="hidden" value={image?.id} />
+              ) : null}
+              <input
+                id="image-input"
+                aria-label="Image"
+                className="absolute left-0 top-0 z-0 h-32 w-32 cursor-pointer opacity-0"
+                onChange={event => {
+                  const file = event.target.files?.[0]
+
+                  if (file) {
+                    const reader = new FileReader()
+                    reader.onloadend = () => {
+                      setPreviewImage(reader.result as string)
+                    }
+                    reader.readAsDataURL(file)
+                  } else {
+                    setPreviewImage(null)
+                  }
+                }}
+                name="file"
+                type="file"
+                accept="image/*"
+              />
+            </label>
+          </div>
+        </div>
+        <div className="flex-1">
+          <Label htmlFor="alt-text">Alt Text</Label>
+          <Textarea
+            id="alt-text"
+            name="altText"
+            defaultValue={altText}
+            onChange={e => setAltText(e.currentTarget.value)}
+          />
+        </div>
+      </div>
+    </fieldset>
   )
 }
 
