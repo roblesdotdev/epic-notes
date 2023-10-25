@@ -1,5 +1,11 @@
 import type { FieldConfig } from '@conform-to/react'
-import { conform, useFieldset, useForm } from '@conform-to/react'
+import {
+  list,
+  conform,
+  useFieldList,
+  useFieldset,
+  useForm,
+} from '@conform-to/react'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node'
 import {
@@ -66,7 +72,7 @@ const NoteEditionSchema = z.object({
   content: z
     .string({ required_error: 'Content is required' })
     .max(contentMaxLength),
-  image: ImageFieldsetSchema,
+  images: z.array(ImageFieldsetSchema),
 })
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -81,19 +87,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
     schema: NoteEditionSchema,
   })
 
+  if (submission.intent !== 'submit') {
+    return json({ status: 'idle', submission } as const)
+  }
+
   if (!submission.value) {
     return json({ status: 'error', submission } as const, {
       status: 400,
     })
   }
 
-  const { title, content, image } = submission.value
+  const { title, content, images } = submission.value
 
   updateNote({
     id: params.noteId,
     title,
     content,
-    images: [image],
+    images,
   })
 
   return redirect(`/users/${params.username}/notes/${params.noteId}`)
@@ -138,9 +148,11 @@ export default function NoteEdit() {
     defaultValue: {
       title: data.note.title,
       content: data.note.content,
-      image: data.note.images[0],
+      images: data.note.images.length ? data.note.images : [{}],
     },
   })
+
+  const imageList = useFieldList(form.ref, fields.images)
 
   return (
     <div className="absolute inset-0">
@@ -150,6 +162,13 @@ export default function NoteEdit() {
         {...form.props}
         encType="multipart/form-data"
       >
+        {/*
+					This hidden submit button is here to ensure that when the user hits
+					"enter" on an input field, the primary form function is submitted
+					rather than the first button in the form (which is delete/add image).
+				*/}
+        <button type="submit" className="hidden" />
+
         <div className="flex flex-col gap-1">
           <div>
             <Label htmlFor={fields.title.id}>Title</Label>
@@ -172,9 +191,32 @@ export default function NoteEdit() {
             </div>
           </div>
           <div>
-            <Label>Image</Label>
-            <ImageChooser config={fields.image} />
+            <Label>Images</Label>
+            <ul className="flex flex-col gap-4">
+              {imageList.map((image, index) => (
+                <li
+                  key={image.key}
+                  className="relative border-b-2 border-muted-foreground"
+                >
+                  <button
+                    className="absolute right-0 top-0 text-foreground-destructive"
+                    {...list.remove(fields.images.name, { index })}
+                  >
+                    <span aria-hidden>❌</span>{' '}
+                    <span className="sr-only">Remove image {index + 1}</span>
+                  </button>
+                  <ImageChooser config={image} />
+                </li>
+              ))}
+            </ul>
           </div>
+          <Button
+            className="mt-3"
+            {...list.insert(fields.images.name, { defaultValue: {} })}
+          >
+            <span aria-hidden>➕ Image</span>{' '}
+            <span className="sr-only">Add image</span>
+          </Button>
         </div>
         <ErrorList id={form.errorId} errors={form.errors} />
       </Form>
