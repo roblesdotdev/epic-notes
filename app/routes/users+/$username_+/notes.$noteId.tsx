@@ -16,7 +16,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const noteId = params.noteId
   const note = db.note.findFirst({ where: { id: { equals: noteId } } })
   invariantResponse(note, 'Not found note', { status: 404 })
-  return json({ note: { title: note.title, content: note.content } })
+  return json({
+    note: {
+      title: note.title,
+      content: note.content,
+    },
+  })
 }
 
 export async function action({ params, request }: ActionFunctionArgs) {

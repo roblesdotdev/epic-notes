@@ -31,7 +31,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
   invariantResponse(note, 'Note not found', { status: 404 })
 
   return json({
-    note: { title: note.title, content: note.content },
+    note: {
+      title: note.title,
+      content: note.content,
+    },
   })
 }
 
