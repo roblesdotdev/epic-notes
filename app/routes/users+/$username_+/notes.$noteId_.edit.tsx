@@ -22,6 +22,7 @@ import {
   useNavigation,
 } from '@remix-run/react'
 import { useRef, useState } from 'react'
+import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
@@ -29,6 +30,7 @@ import { Button } from '~/components/ui/button.tsx'
 import { Input } from '~/components/ui/input.tsx'
 import { Label } from '~/components/ui/label.tsx'
 import { Textarea } from '~/components/ui/textarea.tsx'
+import { validateCSRF } from '~/utils/csrf.secret.ts'
 import { db, updateNote } from '~/utils/db.server.ts'
 import { cn, invariantResponse } from '~/utils/misc.ts'
 
@@ -82,6 +84,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     request,
     createMemoryUploadHandler({ maxPartSize: MAX_UPLOAD_SIZE }),
   )
+  await validateCSRF(formData, request.headers)
 
   const submission = parse(formData, {
     schema: NoteEditionSchema,
@@ -162,6 +165,7 @@ export default function NoteEdit() {
         {...form.props}
         encType="multipart/form-data"
       >
+        <AuthenticityTokenInput />
         {/*
 					This hidden submit button is here to ensure that when the user hits
 					"enter" on an input field, the primary form function is submitted
