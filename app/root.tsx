@@ -16,6 +16,8 @@ import fontStyles from './styles/fonts.css'
 import tailwindStyles from './styles/tailwind.css'
 import { getEnv } from './utils/env.server.ts'
 import { GeneralErrorBoundary } from './components/error-boundary.tsx'
+import { HoneypotProvider } from 'remix-utils/honeypot/react'
+import { honeypot } from './utils/honeypot.server.ts'
 
 export const links: LinksFunction = () => [
   { rel: 'icon', type: 'image+svg', href: iconAssetUrl },
@@ -25,7 +27,8 @@ export const links: LinksFunction = () => [
 ]
 
 export async function loader() {
-  return json({ ENV: getEnv() })
+  const honeyProps = honeypot.getInputProps()
+  return json({ ENV: getEnv(), honeyProps })
 }
 
 export const meta: MetaFunction = () => {
@@ -54,7 +57,7 @@ function Document({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function App() {
+function App() {
   const data = useLoaderData<typeof loader>()
   return (
     <Document>
@@ -94,6 +97,15 @@ export default function App() {
         }}
       />
     </Document>
+  )
+}
+
+export default function AppWithProviders() {
+  const data = useLoaderData<typeof loader>()
+  return (
+    <HoneypotProvider {...data.honeyProps}>
+      <App />
+    </HoneypotProvider>
   )
 }
 
