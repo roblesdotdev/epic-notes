@@ -8,6 +8,7 @@ import {
 } from '@conform-to/react'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node'
+import { createId as cuid } from '@paralleldrive/cuid2'
 import {
   json,
   redirect,
@@ -31,26 +32,31 @@ import { Input } from '~/components/ui/input.tsx'
 import { Label } from '~/components/ui/label.tsx'
 import { Textarea } from '~/components/ui/textarea.tsx'
 import { validateCSRF } from '~/utils/csrf.secret.ts'
-import { db, updateNote } from '~/utils/db.server.ts'
-import { cn, invariantResponse } from '~/utils/misc.ts'
+import { db } from '~/utils/db.server.ts'
+import { cn, getNoteImgSrc, invariantResponse } from '~/utils/misc.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
-  const note = db.note.findFirst({
-    where: {
-      id: {
-        equals: params.noteId,
+  const note = await db.note.findUnique({
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      images: {
+        select: {
+          id: true,
+          altText: true,
+        },
       },
+    },
+    where: {
+      id: params.noteId,
     },
   })
 
   invariantResponse(note, 'Note not found', { status: 404 })
 
   return json({
-    note: {
-      title: note.title,
-      content: note.content,
-      images: note.images.map(i => ({ id: i.id, altText: i.altText })),
-    },
+    note,
   })
 }
 
@@ -69,6 +75,20 @@ const ImageFieldsetSchema = z.object({
   altText: z.string().optional(),
 })
 
+type ImageFieldset = z.infer<typeof ImageFieldsetSchema>
+
+function imageHasFile(
+  image: ImageFieldset,
+): image is ImageFieldset & { file: NonNullable<ImageFieldset['file']> } {
+  return Boolean(image.file?.size && image.file?.size > 0)
+}
+
+function imageHasId(
+  image: ImageFieldset,
+): image is ImageFieldset & { id: NonNullable<ImageFieldset['id']> } {
+  return image.id != null
+}
+
 const NoteEditionSchema = z.object({
   title: z.string({ required_error: 'Title is required' }).max(titleMaxLength),
   content: z
@@ -86,8 +106,39 @@ export async function action({ request, params }: ActionFunctionArgs) {
   )
   await validateCSRF(formData, request.headers)
 
-  const submission = parse(formData, {
-    schema: NoteEditionSchema,
+  const submission = await parse(formData, {
+    schema: NoteEditionSchema.transform(async ({ images = [], ...data }) => {
+      return {
+        ...data,
+        imageUpdates: await Promise.all(
+          images.filter(imageHasId).map(async i => {
+            if (imageHasFile(i)) {
+              return {
+                id: i.id,
+                altText: i.altText,
+                contentType: i.file.type,
+                blob: Buffer.from(await i.file.arrayBuffer()),
+              }
+            } else {
+              return { id: i.id, altText: i.altText }
+            }
+          }),
+        ),
+        newImages: await Promise.all(
+          images
+            .filter(imageHasFile)
+            .filter(i => !i.id)
+            .map(async image => {
+              return {
+                altText: image.altText,
+                contentType: image.file.type,
+                blob: Buffer.from(await image.file.arrayBuffer()),
+              }
+            }),
+        ),
+      }
+    }),
+    async: true,
   })
 
   if (submission.intent !== 'submit') {
@@ -100,13 +151,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
     })
   }
 
-  const { title, content, images } = submission.value
+  const { title, content, imageUpdates = [], newImages = [] } = submission.value
 
-  updateNote({
-    id: params.noteId,
-    title,
-    content,
-    images,
+  await db.note.update({
+    select: { id: true },
+    where: { id: params.noteId },
+    data: {
+      title,
+      content,
+      images: {
+        deleteMany: { id: { notIn: imageUpdates.map(i => i.id) } },
+        updateMany: imageUpdates.map(updates => ({
+          where: { id: updates.id },
+          data: { ...updates, id: updates.blob ? cuid() : updates.id },
+        })),
+        create: newImages,
+      },
+    },
   })
 
   return redirect(`/users/${params.username}/notes/${params.noteId}`)
@@ -245,7 +306,7 @@ function ImageChooser({
   const fields = useFieldset(ref, config)
   const existingImage = Boolean(fields.id.defaultValue)
   const [previewImage, setPreviewImage] = useState<string | null>(
-    existingImage ? `/resources/images/${fields.id.defaultValue}` : null,
+    existingImage ? getNoteImgSrc(fields.id.defaultValue!) : null,
   )
   const [altText, setAltText] = useState(fields.altText.defaultValue ?? '')
 

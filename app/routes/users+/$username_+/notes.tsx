@@ -7,16 +7,18 @@ import { cn, invariantResponse } from '~/utils/misc.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const username = params.username
-  const owner = db.user.findFirst({ where: { username: { equals: username } } })
+  const owner = await db.user.findFirst({
+    where: { username },
+    select: {
+      name: true,
+      username: true,
+      image: { select: { id: true } },
+      notes: { select: { id: true, title: true } },
+    },
+  })
   invariantResponse(owner, 'Invalid username', { status: 404 })
-  const notes = db.note
-    .findMany({
-      where: { owner: { username: { equals: owner.username } } },
-    })
-    .map(({ id, title }) => ({ id, title }))
   return json({
     owner,
-    notes,
   })
 }
 
@@ -40,7 +42,7 @@ export default function NotesRoute() {
               </h1>
             </Link>
             <ul className="overflow-y-auto overflow-x-hidden pb-12">
-              {data.notes.map(note => (
+              {data.owner.notes.map(note => (
                 <li className="p-1 pr-0" key={note.id}>
                   <NavLink
                     to={note.id}

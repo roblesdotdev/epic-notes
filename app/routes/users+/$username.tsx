@@ -2,16 +2,27 @@ import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
+import { Spacer } from '~/components/spacer.tsx'
+import { Button } from '~/components/ui/button.tsx'
 import { db } from '~/utils/db.server.ts'
-import { invariantResponse } from '~/utils/misc.ts'
+import { getUserImgSrc, invariantResponse } from '~/utils/misc.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const username = params.username
-  const user = db.user.findFirst({ where: { username: { equals: username } } })
+  const user = await db.user.findFirst({
+    where: { username },
+    select: {
+      name: true,
+      username: true,
+      createdAt: true,
+      image: { select: { id: true } },
+    },
+  })
   invariantResponse(user, 'Invalid username', { status: 404 })
 
   return json({
-    user: { name: user.name, username: user.username },
+    user,
+    userJoinedDisplay: user.createdAt.toLocaleDateString(),
   })
 }
 
@@ -25,13 +36,44 @@ export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
 
 export default function KodyProfileRoute() {
   const data = useLoaderData<typeof loader>()
+  const user = data.user
+  const userDisplayName = user.name ?? user.username
 
   return (
-    <div className="container mb-48 mt-36">
-      <h1 className="text-h1">{data.user.name ?? data.user.username}</h1>
-      <Link to="notes" className="underline" prefetch="intent">
-        Notes
-      </Link>
+    <div className="container mb-48 mt-36 flex flex-col items-center justify-center">
+      <Spacer size="4xs" />
+
+      <div className="container flex flex-col items-center rounded-3xl bg-muted p-12">
+        <div className="relative w-52">
+          <div className="absolute -top-40">
+            <div className="relative">
+              <img
+                src={getUserImgSrc(data.user.image?.id)}
+                alt={userDisplayName}
+                className="h-52 w-52 rounded-full object-cover"
+              />
+            </div>
+          </div>
+        </div>
+
+        <Spacer size="sm" />
+
+        <div className="flex flex-col items-center">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <h1 className="text-center text-h2">{userDisplayName}</h1>
+          </div>
+          <p className="mt-2 text-center text-muted-foreground">
+            Joined {data.userJoinedDisplay}
+          </p>
+          <div className="mt-10 flex gap-4">
+            <Button asChild>
+              <Link to="notes" prefetch="intent">
+                {userDisplayName}'s notes
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -9,21 +9,27 @@ import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
 import { Button } from '~/components/ui/button.tsx'
 import { db } from '~/utils/db.server.ts'
-import { invariantResponse } from '~/utils/misc.ts'
+import { getNoteImgSrc, invariantResponse } from '~/utils/misc.ts'
 import type { loader as notesLoader } from './notes.tsx'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { validateCSRF } from '~/utils/csrf.secret.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const noteId = params.noteId
-  const note = db.note.findFirst({ where: { id: { equals: noteId } } })
+  const note = await db.note.findUnique({
+    where: { id: noteId },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      images: {
+        select: { id: true, altText: true },
+      },
+    },
+  })
   invariantResponse(note, 'Not found note', { status: 404 })
   return json({
-    note: {
-      title: note.title,
-      content: note.content,
-      images: note.images.map(i => ({ id: i.id, altText: i.altText })),
-    },
+    note,
   })
 }
 
@@ -32,7 +38,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
   await validateCSRF(formData, request.headers)
   const intent = formData.get('intent')
   invariantResponse(intent === 'delete', 'Invalid intent')
-  db.note.delete({ where: { id: { equals: params.noteId } } })
+  await db.note.delete({ where: { id: params.noteId } })
   return redirect(`/users/${params.username}/notes`)
 }
 
@@ -68,9 +74,9 @@ export default function SomeNoteId() {
         <ul className="flex flex-wrap gap-5 py-5">
           {data.note.images.map(image => (
             <li key={image.id}>
-              <a href={`/resources/images/${image.id}`}>
+              <a href={getNoteImgSrc(image.id)}>
                 <img
-                  src={`/resources/images/${image.id}`}
+                  src={getNoteImgSrc(image.id)}
                   alt={image.altText ?? ''}
                   className="h-32 w-32 rounded-lg object-cover"
                 />
