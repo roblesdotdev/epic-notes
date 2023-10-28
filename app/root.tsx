@@ -1,6 +1,11 @@
 import { cssBundleHref } from '@remix-run/css-bundle'
 import { json } from '@remix-run/node'
-import type { MetaFunction, LinksFunction } from '@remix-run/node'
+import type {
+  MetaFunction,
+  LinksFunction,
+  DataFunctionArgs,
+  LoaderFunctionArgs,
+} from '@remix-run/node'
 import {
   Link,
   Links,
@@ -9,6 +14,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useFetcher,
   useLoaderData,
 } from '@remix-run/react'
 import iconAssetUrl from './assets/favicon.svg'
@@ -20,6 +26,18 @@ import { HoneypotProvider } from 'remix-utils/honeypot/react'
 import { AuthenticityTokenProvider } from 'remix-utils/csrf/react'
 import { honeypot } from './utils/honeypot.server.ts'
 import { csrf } from './utils/csrf.secret.ts'
+import { z } from 'zod'
+import { useForm } from '@conform-to/react'
+import { getTheme, setTheme, type Theme } from './utils/theme.server.ts'
+import { parse } from '@conform-to/zod'
+import { ErrorList } from './components/forms.tsx'
+import SunIcon from './components/ui/icons/sun-icon.tsx'
+import MoonIcon from './components/ui/icons/moon-icon.tsx'
+import { invariantResponse } from './utils/misc.tsx'
+
+const ThemeFormSchema = z.object({
+  theme: z.enum(['light', 'dark']),
+})
 
 export const links: LinksFunction = () => [
   { rel: 'icon', type: 'image+svg', href: iconAssetUrl },
@@ -28,15 +46,43 @@ export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: 'stylesheet', href: cssBundleHref }] : []),
 ]
 
-export async function loader() {
+export async function loader({ request }: LoaderFunctionArgs) {
   const honeyProps = honeypot.getInputProps()
   const [csrfToken, csrfCookieHeader] = await csrf.commitToken()
   return json(
-    { ENV: getEnv(), honeyProps, csrfToken },
+    { theme: getTheme(request), ENV: getEnv(), honeyProps, csrfToken },
     {
       headers: csrfCookieHeader ? { 'set-cookie': csrfCookieHeader } : {},
     },
   )
+}
+
+export async function action({ request }: DataFunctionArgs) {
+  const formData = await request.formData()
+  invariantResponse(
+    formData.get('intent') === 'update-theme',
+    'Invalid intent',
+    { status: 400 },
+  )
+  const submission = parse(formData, {
+    schema: ThemeFormSchema,
+  })
+  if (submission.intent !== 'submit') {
+    return json({ status: 'success', submission } as const)
+  }
+  if (!submission.value) {
+    return json({ status: 'error', submission } as const, { status: 400 })
+  }
+
+  const { theme } = submission.value
+
+  const responseInit = {
+    headers: {
+      'set-cookie': setTheme(theme),
+    },
+  }
+
+  return json({ success: true, submission }, responseInit)
 }
 
 export const meta: MetaFunction = () => {
@@ -46,9 +92,15 @@ export const meta: MetaFunction = () => {
   ]
 }
 
-function Document({ children }: { children: React.ReactNode }) {
+function Document({
+  children,
+  theme,
+}: {
+  children: React.ReactNode
+  theme?: Theme
+}) {
   return (
-    <html lang="en" className="dark h-full overflow-x-hidden">
+    <html lang="en" className={`${theme} h-full overflow-x-hidden`}>
       <head>
         <Meta />
         <meta charSet="utf-8" />
@@ -67,19 +119,15 @@ function Document({ children }: { children: React.ReactNode }) {
 
 function App() {
   const data = useLoaderData<typeof loader>()
+  const theme = data.theme
   return (
-    <Document>
+    <Document theme={theme}>
       <header className="container mx-auto py-6">
         <nav className="flex justify-between">
           <Link to="/">
             <div className="font-light">epic</div>
             <div className="font-bold">notes</div>
           </Link>
-          {/* 
-          <Link className="underline" to="users/kody/notes/d27a197e">
-            Kody's Notes
-          </Link>
-          */}
           <Link className="underline" to="/signup">
             Signup
           </Link>
@@ -96,6 +144,7 @@ function App() {
           <div className="font-bold">notes</div>
         </Link>
         <p>Built with ♥️ by robledotdev</p>
+        <ThemeSwitch userPreference={theme} />
       </div>
       <div className="h-5" />
       <ScrollRestoration />
@@ -116,6 +165,42 @@ export default function AppWithProviders() {
         <App />
       </HoneypotProvider>
     </AuthenticityTokenProvider>
+  )
+}
+
+function ThemeSwitch({ userPreference }: { userPreference?: Theme }) {
+  const fetcher = useFetcher<typeof action>()
+
+  const [form] = useForm({
+    id: 'theme-switch',
+    lastSubmission: fetcher.data?.submission,
+    onValidate({ formData }) {
+      return parse(formData, { schema: ThemeFormSchema })
+    },
+  })
+
+  const mode = userPreference ?? 'dark'
+  const nextMode = mode === 'light' ? 'dark' : 'light'
+  const modeLabel = {
+    light: <SunIcon />,
+    dark: <MoonIcon />,
+  }
+
+  return (
+    <fetcher.Form {...form.props} method="POST">
+      <input type="hidden" name="theme" value={nextMode} />
+      <div className="flex gap-2">
+        <button
+          name="intent"
+          value="update-theme"
+          type="submit"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center"
+        >
+          {modeLabel[mode]}
+        </button>
+      </div>
+      <ErrorList errors={form.errors} id={form.errorId} />
+    </fetcher.Form>
   )
 }
 

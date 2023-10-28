@@ -56,6 +56,9 @@ dependencies:
   compression:
     specifier: ^1.7.4
     version: 1.7.4
+  cookie:
+    specifier: ^0.5.0
+    version: 0.5.0
   crypto-js:
     specifier: ^4.2.0
     version: 4.2.0
@@ -118,6 +121,9 @@ devDependencies:
   '@types/compression':
     specifier: ^1.7.4
     version: 1.7.4
+  '@types/cookie':
+    specifier: ^0.5.3
+    version: 0.5.3
   '@types/express':
     specifier: ^4.17.20
     version: 4.17.20
@@ -1868,6 +1874,10 @@ packages:
 
   /@types/cookie@0.4.1:
     resolution: {integrity: sha512-XW/Aa8APYr6jSVVA1y/DEIZX0/GMKLEVekNG727R8cs56ahETkRAy/3DR7+fJyh7oUgGwNQaRfXCun0+KbWY7Q==}
+
+  /@types/cookie@0.5.3:
+    resolution: {integrity: sha512-SLg07AS9z1Ab2LU+QxzU8RCmzsja80ywjf/t5oqw+4NSH20gIGlhLOrBDm1L3PBWzPa4+wkgFQVZAjE6Ioj2ug==}
+    dev: true
 
   /@types/debug@4.1.10:
     resolution: {integrity: sha512-tOSCru6s732pofZ+sMv9o4o3Zc+Sa8l3bxd/tweTQudFn06vAzb13ZX46Zi6m6EJ+RUbRTHvgQJ1gBtSgkaUYA==}
