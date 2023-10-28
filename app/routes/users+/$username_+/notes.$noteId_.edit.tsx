@@ -34,6 +34,7 @@ import { Textarea } from '~/components/ui/textarea.tsx'
 import { validateCSRF } from '~/utils/csrf.secret.ts'
 import { db } from '~/utils/db.server.ts'
 import { cn, getNoteImgSrc, invariantResponse } from '~/utils/misc.tsx'
+import { ErrorList } from '~/components/forms.tsx'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const note = await db.note.findUnique({
@@ -171,24 +172,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
   })
 
   return redirect(`/users/${params.username}/notes/${params.noteId}`)
-}
-
-function ErrorList({
-  id,
-  errors,
-}: {
-  id?: string
-  errors?: Array<string> | null
-}) {
-  return errors?.length ? (
-    <ul className="flex flex-col gap-1" id={id}>
-      {errors.map((error, i) => (
-        <li key={i} className="text-[10px] text-foreground-destructive">
-          {error}
-        </li>
-      ))}
-    </ul>
-  ) : null
 }
 
 export default function NoteEdit() {

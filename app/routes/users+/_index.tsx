@@ -1,9 +1,20 @@
 import { json, redirect, type DataFunctionArgs } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
+import { z } from 'zod'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
+import { ErrorList } from '~/components/forms.tsx'
 import { SearchBar } from '~/components/search-bar.tsx'
 import { db } from '~/utils/db.server.ts'
 import { cn, getUserImgSrc, useDelayedIsPending } from '~/utils/misc.tsx'
+
+const UserSearchResultSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  name: z.string().nullable(),
+  imageId: z.string().nullable(),
+})
+
+const UserSearchResultsSchema = z.array(UserSearchResultSchema)
 
 export async function loader({ request }: DataFunctionArgs) {
   const searchTerm = new URL(request.url).searchParams.get('search')
@@ -11,25 +22,25 @@ export async function loader({ request }: DataFunctionArgs) {
     return redirect('/users')
   }
 
-  const users = await db.user.findMany({
-    where: {
-      username: {
-        contains: searchTerm ?? '',
-      },
-    },
-    select: {
-      id: true,
-      username: true,
-      name: true,
-      image: true,
-    },
-  })
+  const like = `%${searchTerm ?? ''}%`
+  const rawUsers = await db.$queryRaw`
+    SELECT User.id, User.username, User.name, UserImage.id AS imageId
+    FROM User
+    LEFT JOIN UserImage ON UserImage.userId = User.id
+		WHERE User.username LIKE ${like}
+		OR User.name LIKE ${like}
+    LIMIT 50
+  `
+  const result = UserSearchResultsSchema.safeParse(rawUsers)
+  if (!result.success) {
+    return json({ status: 'error', error: result.error.message } as const, {
+      status: 400,
+    })
+  }
 
   return json({
     status: 'idle',
-    // 🐨 you can simply set this to the users you get back from the query
-    // instead of doing the map thing because we can select exactly what we want.
-    users,
+    users: result.data,
   } as const)
 }
 
@@ -48,7 +59,6 @@ export default function UsersRoute() {
       </div>
       <main>
         {data.status === 'idle' ? (
-          // 🦺 TypeScript won't like this. We'll fix it later.
           data.users.length ? (
             <ul
               className={cn(
@@ -56,7 +66,6 @@ export default function UsersRoute() {
                 { 'opacity-50': isPending },
               )}
             >
-              {/* 🦺 TypeScript won't like this. We'll fix it later. */}
               {data.users.map(user => (
                 <li key={user.id}>
                   <Link
@@ -65,7 +74,7 @@ export default function UsersRoute() {
                   >
                     <img
                       alt={user.name ?? user.username}
-                      src={getUserImgSrc(user.image?.id)}
+                      src={getUserImgSrc(user.imageId)}
                       className="h-16 w-16 rounded-full"
                     />
                     {user.name ? (
@@ -83,6 +92,8 @@ export default function UsersRoute() {
           ) : (
             <p>No users found</p>
           )
+        ) : data.status === 'error' ? (
+          <ErrorList errors={['There was an error parsing the results']} />
         ) : null}
       </main>
     </div>
