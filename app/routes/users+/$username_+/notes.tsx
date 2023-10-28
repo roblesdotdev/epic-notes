@@ -3,7 +3,7 @@ import { json } from '@remix-run/node'
 import { Link, NavLink, Outlet, useLoaderData } from '@remix-run/react'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { db } from '~/utils/db.server.ts'
-import { cn, invariantResponse } from '~/utils/misc.ts'
+import { cn, invariantResponse } from '~/utils/misc.tsx'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const username = params.username

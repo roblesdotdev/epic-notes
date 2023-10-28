@@ -33,7 +33,7 @@ import { Label } from '~/components/ui/label.tsx'
 import { Textarea } from '~/components/ui/textarea.tsx'
 import { validateCSRF } from '~/utils/csrf.secret.ts'
 import { db } from '~/utils/db.server.ts'
-import { cn, getNoteImgSrc, invariantResponse } from '~/utils/misc.ts'
+import { cn, getNoteImgSrc, invariantResponse } from '~/utils/misc.tsx'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const note = await db.note.findUnique({
