@@ -15,6 +15,7 @@ import {
   Scripts,
   ScrollRestoration,
   useFetcher,
+  useFetchers,
   useLoaderData,
 } from '@remix-run/react'
 import iconAssetUrl from './assets/favicon.svg'
@@ -119,7 +120,7 @@ function Document({
 
 function App() {
   const data = useLoaderData<typeof loader>()
-  const theme = data.theme
+  const theme = useTheme()
   return (
     <Document theme={theme}>
       <header className="container mx-auto py-6">
@@ -166,6 +167,19 @@ export default function AppWithProviders() {
       </HoneypotProvider>
     </AuthenticityTokenProvider>
   )
+}
+
+function useTheme() {
+  const data = useLoaderData<typeof loader>()
+  const fetchers = useFetchers()
+  const themeFetcher = fetchers.find(
+    fetcher => fetcher.formData?.get('intent') === 'update-theme',
+  )
+  const optimisticTheme = themeFetcher?.formData?.get('theme')
+  if (optimisticTheme === 'light' || optimisticTheme === 'dark') {
+    return optimisticTheme
+  }
+  return data.theme
 }
 
 function ThemeSwitch({ userPreference }: { userPreference?: Theme }) {
