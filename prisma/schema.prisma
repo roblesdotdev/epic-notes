@@ -35,6 +35,12 @@ model Note {
   ownerId String
 
   images NoteImage[]
+
+  // non-unique foreign key
+  @@index([ownerId])
+
+  // This helps our order by in the user search
+  @@index([ownerId, updatedAt])
 }
 
 model NoteImage {
