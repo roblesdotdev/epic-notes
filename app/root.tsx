@@ -36,7 +36,8 @@ import { ErrorList } from './components/forms.tsx'
 import SunIcon from './components/ui/icons/sun-icon.tsx'
 import MoonIcon from './components/ui/icons/moon-icon.tsx'
 import { combineHeaders, invariantResponse } from './utils/misc.tsx'
-import { toastSessionStorage } from './utils/toast.server.ts'
+import type { Toast } from './utils/toast.server.ts'
+import { getToast } from './utils/toast.server.ts'
 import { useEffect } from 'react'
 import { Spacer } from './components/spacer.tsx'
 
@@ -55,20 +56,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const honeyProps = honeypot.getInputProps()
   const [csrfToken, csrfCookieHeader] = await csrf.commitToken()
 
-  const toastCookieSession = await toastSessionStorage.getSession(
-    request.headers.get('cookie'),
-  )
-  const toast = toastCookieSession.get('toast')
+  const { toast, headers: toastHeaders } = await getToast(request)
 
   return json(
     { theme: getTheme(request), toast, ENV: getEnv(), honeyProps, csrfToken },
     {
       headers: combineHeaders(
         csrfCookieHeader ? { 'set-cookie': csrfCookieHeader } : null,
-        {
-          'set-cookie':
-            await toastSessionStorage.commitSession(toastCookieSession),
-        },
+        toastHeaders,
       ),
     },
   )
@@ -194,7 +189,7 @@ function useTheme() {
   const data = useLoaderData<typeof loader>()
   const fetchers = useFetchers()
   const themeFetcher = fetchers.find(
-    fetcher => fetcher.formData?.get('intent') === 'update-theme',
+    f => f.formData?.get('intent') === 'update-theme',
   )
   const optimisticTheme = themeFetcher?.formData?.get('theme')
   if (optimisticTheme === 'light' || optimisticTheme === 'dark') {
@@ -239,13 +234,8 @@ function ThemeSwitch({ userPreference }: { userPreference?: Theme }) {
   )
 }
 
-function ShowToast({ toast }: { toast: any }) {
-  const { id, type, title, description } = toast as {
-    id: string
-    type: 'success' | 'message'
-    title: string
-    description: string
-  }
+function ShowToast({ toast }: { toast: Toast }) {
+  const { id, type, title, description } = toast
   useEffect(() => {
     setTimeout(() => {
       showToast[type](title, { id, description })

@@ -3,7 +3,7 @@ import type {
   LoaderFunctionArgs,
   MetaFunction,
 } from '@remix-run/node'
-import { json, redirect } from '@remix-run/node'
+import { json } from '@remix-run/node'
 import { Form, Link, useActionData, useLoaderData } from '@remix-run/react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
@@ -17,7 +17,7 @@ import {
 import type { loader as notesLoader } from './notes.tsx'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { validateCSRF } from '~/utils/csrf.secret.ts'
-import { toastSessionStorage } from '~/utils/toast.server.ts'
+import { redirectWithToast } from '~/utils/toast.server.ts'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
 import { z } from 'zod'
 import { useForm } from '@conform-to/react'
@@ -70,20 +70,10 @@ export async function action({ params, request }: ActionFunctionArgs) {
 
   await db.note.delete({ where: { id: noteId } })
 
-  const toastCookieSession = await toastSessionStorage.getSession(
-    request.headers.get('cookie'),
-  )
-  toastCookieSession.flash('toast', {
-    id: noteId,
+  throw await redirectWithToast(`/users/${note.owner.username}/notes`, {
     type: 'success',
-    title: 'Note deleted',
+    title: 'Success',
     description: 'Your note has been deleted',
-  })
-
-  return redirect(`/users/${params.username}/notes`, {
-    headers: {
-      'set-cookie': await toastSessionStorage.commitSession(toastCookieSession),
-    },
   })
 }
 
