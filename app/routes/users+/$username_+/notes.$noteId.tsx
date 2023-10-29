@@ -16,7 +16,7 @@ import {
 } from '~/utils/misc.tsx'
 import type { loader as notesLoader } from './notes.tsx'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
-import { validateCSRF } from '~/utils/csrf.secret.ts'
+import { validateCSRF } from '~/utils/csrf.server.ts'
 import { redirectWithToast } from '~/utils/toast.server.ts'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
 import { z } from 'zod'

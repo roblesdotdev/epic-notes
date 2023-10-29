@@ -9,7 +9,7 @@ import { HoneypotInputs } from 'remix-utils/honeypot/react'
 import { Button } from '~/components/ui/button.tsx'
 import { Input } from '~/components/ui/input.tsx'
 import { Label } from '~/components/ui/label.tsx'
-import { validateCSRF } from '~/utils/csrf.secret.ts'
+import { validateCSRF } from '~/utils/csrf.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
 
 export async function action({ request }: DataFunctionArgs) {

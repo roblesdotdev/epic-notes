@@ -27,7 +27,7 @@ import { HoneypotProvider } from 'remix-utils/honeypot/react'
 import { Toaster, toast as showToast } from 'sonner'
 import { AuthenticityTokenProvider } from 'remix-utils/csrf/react'
 import { honeypot } from './utils/honeypot.server.ts'
-import { csrf } from './utils/csrf.secret.ts'
+import { csrf } from './utils/csrf.server.ts'
 import { z } from 'zod'
 import { useForm } from '@conform-to/react'
 import { getTheme, setTheme, type Theme } from './utils/theme.server.ts'
@@ -40,6 +40,7 @@ import type { Toast } from './utils/toast.server.ts'
 import { getToast } from './utils/toast.server.ts'
 import { useEffect } from 'react'
 import { Spacer } from './components/spacer.tsx'
+import { Button } from './components/ui/button.tsx'
 
 const ThemeFormSchema = z.object({
   theme: z.enum(['light', 'dark']),
@@ -148,9 +149,11 @@ function App() {
             <div className="font-light">epic</div>
             <div className="font-bold">notes</div>
           </Link>
-          <Link className="underline" to="/signup">
-            Signup
-          </Link>
+          <div className="flex items-center gap-10">
+            <Button asChild variant="default" size="sm">
+              <Link to="/login">Log In</Link>
+            </Button>
+          </div>
         </nav>
       </header>
 
