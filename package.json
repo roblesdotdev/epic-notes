@@ -47,6 +47,7 @@
     "react-dom": "^18.2.0",
     "remix-flat-routes": "^0.6.1",
     "remix-utils": "^7.1.0",
+    "sonner": "^1.0.3",
     "source-map-support": "^0.5.21",
     "spin-delay": "^1.2.0",
     "tailwind-merge": "^1.14.0",

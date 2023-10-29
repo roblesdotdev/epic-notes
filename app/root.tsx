@@ -24,6 +24,7 @@ import tailwindStyles from './styles/tailwind.css'
 import { getEnv } from './utils/env.server.ts'
 import { GeneralErrorBoundary } from './components/error-boundary.tsx'
 import { HoneypotProvider } from 'remix-utils/honeypot/react'
+import { Toaster, toast as showToast } from 'sonner'
 import { AuthenticityTokenProvider } from 'remix-utils/csrf/react'
 import { honeypot } from './utils/honeypot.server.ts'
 import { csrf } from './utils/csrf.secret.ts'
@@ -34,7 +35,10 @@ import { parse } from '@conform-to/zod'
 import { ErrorList } from './components/forms.tsx'
 import SunIcon from './components/ui/icons/sun-icon.tsx'
 import MoonIcon from './components/ui/icons/moon-icon.tsx'
-import { invariantResponse } from './utils/misc.tsx'
+import { combineHeaders, invariantResponse } from './utils/misc.tsx'
+import { toastSessionStorage } from './utils/toast.server.ts'
+import { useEffect } from 'react'
+import { Spacer } from './components/spacer.tsx'
 
 const ThemeFormSchema = z.object({
   theme: z.enum(['light', 'dark']),
@@ -50,10 +54,22 @@ export const links: LinksFunction = () => [
 export async function loader({ request }: LoaderFunctionArgs) {
   const honeyProps = honeypot.getInputProps()
   const [csrfToken, csrfCookieHeader] = await csrf.commitToken()
+
+  const toastCookieSession = await toastSessionStorage.getSession(
+    request.headers.get('cookie'),
+  )
+  const toast = toastCookieSession.get('toast')
+
   return json(
-    { theme: getTheme(request), ENV: getEnv(), honeyProps, csrfToken },
+    { theme: getTheme(request), toast, ENV: getEnv(), honeyProps, csrfToken },
     {
-      headers: csrfCookieHeader ? { 'set-cookie': csrfCookieHeader } : {},
+      headers: combineHeaders(
+        csrfCookieHeader ? { 'set-cookie': csrfCookieHeader } : null,
+        {
+          'set-cookie':
+            await toastSessionStorage.commitSession(toastCookieSession),
+        },
+      ),
     },
   )
 }
@@ -96,9 +112,11 @@ export const meta: MetaFunction = () => {
 function Document({
   children,
   theme,
+  env,
 }: {
   children: React.ReactNode
   theme?: Theme
+  env?: Record<string, string>
 }) {
   return (
     <html lang="en" className={`${theme} h-full overflow-x-hidden`}>
@@ -110,6 +128,12 @@ function Document({
       </head>
       <body className="flex h-full flex-col justify-between bg-background text-foreground">
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.ENV = ${JSON.stringify(env)}`,
+          }}
+        />
+        <Toaster closeButton position="top-center" />
         <ScrollRestoration />
         <Scripts />
         <LiveReload />
@@ -122,7 +146,7 @@ function App() {
   const data = useLoaderData<typeof loader>()
   const theme = useTheme()
   return (
-    <Document theme={theme}>
+    <Document theme={theme} env={data.ENV}>
       <header className="container mx-auto py-6">
         <nav className="flex justify-between">
           <Link to="/">
@@ -144,16 +168,13 @@ function App() {
           <div className="font-light">epic</div>
           <div className="font-bold">notes</div>
         </Link>
-        <p>Built with ♥️ by robledotdev</p>
-        <ThemeSwitch userPreference={theme} />
+        <div className="flex items-center gap-2">
+          <p>Built with ♥️ by robledotdev</p>
+          <ThemeSwitch userPreference={theme} />
+        </div>
       </div>
-      <div className="h-5" />
-      <ScrollRestoration />
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.ENV = ${JSON.stringify(data.ENV)}`,
-        }}
-      />
+      <Spacer size="3xs" />
+      {data.toast ? <ShowToast toast={data.toast} /> : null}
     </Document>
   )
 }
@@ -216,6 +237,21 @@ function ThemeSwitch({ userPreference }: { userPreference?: Theme }) {
       <ErrorList errors={form.errors} id={form.errorId} />
     </fetcher.Form>
   )
+}
+
+function ShowToast({ toast }: { toast: any }) {
+  const { id, type, title, description } = toast as {
+    id: string
+    type: 'success' | 'message'
+    title: string
+    description: string
+  }
+  useEffect(() => {
+    setTimeout(() => {
+      showToast[type](title, { id, description })
+    }, 0)
+  }, [description, id, title, type])
+  return null
 }
 
 export function ErrorBoundary() {

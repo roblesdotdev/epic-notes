@@ -4,15 +4,24 @@ import type {
   MetaFunction,
 } from '@remix-run/node'
 import { json, redirect } from '@remix-run/node'
-import { Form, Link, useLoaderData } from '@remix-run/react'
+import { Form, Link, useActionData, useLoaderData } from '@remix-run/react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
 import { Button } from '~/components/ui/button.tsx'
 import { db } from '~/utils/db.server.ts'
-import { getNoteImgSrc, invariantResponse } from '~/utils/misc.tsx'
+import {
+  getNoteImgSrc,
+  invariantResponse,
+  useIsPending,
+} from '~/utils/misc.tsx'
 import type { loader as notesLoader } from './notes.tsx'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { validateCSRF } from '~/utils/csrf.secret.ts'
+import { toastSessionStorage } from '~/utils/toast.server.ts'
+import { getFieldsetConstraint, parse } from '@conform-to/zod'
+import { z } from 'zod'
+import { useForm } from '@conform-to/react'
+import { ErrorList } from '~/components/forms.tsx'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const noteId = params.noteId
@@ -33,13 +42,49 @@ export async function loader({ params }: LoaderFunctionArgs) {
   })
 }
 
+const DeleteFormSchema = z.object({
+  intent: z.literal('delete-note'),
+  noteId: z.string(),
+})
+
 export async function action({ params, request }: ActionFunctionArgs) {
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
-  const intent = formData.get('intent')
-  invariantResponse(intent === 'delete', 'Invalid intent')
-  await db.note.delete({ where: { id: params.noteId } })
-  return redirect(`/users/${params.username}/notes`)
+  const submission = parse(formData, {
+    schema: DeleteFormSchema,
+  })
+  if (submission.intent !== 'submit') {
+    return json({ status: 'idle', submission } as const)
+  }
+  if (!submission.value) {
+    return json({ status: 'error', submission } as const, { status: 400 })
+  }
+
+  const { noteId } = submission.value
+
+  const note = await db.note.findFirst({
+    select: { id: true, owner: { select: { username: true } } },
+    where: { id: noteId, owner: { username: params.username } },
+  })
+  invariantResponse(note, 'Not found', { status: 404 })
+
+  await db.note.delete({ where: { id: noteId } })
+
+  const toastCookieSession = await toastSessionStorage.getSession(
+    request.headers.get('cookie'),
+  )
+  toastCookieSession.flash('toast', {
+    id: noteId,
+    type: 'success',
+    title: 'Note deleted',
+    description: 'Your note has been deleted',
+  })
+
+  return redirect(`/users/${params.username}/notes`, {
+    headers: {
+      'set-cookie': await toastSessionStorage.commitSession(toastCookieSession),
+    },
+  })
 }
 
 export const meta: MetaFunction<
@@ -89,22 +134,50 @@ export default function SomeNoteId() {
         </p>
       </div>
       <div className={floatingToolbarClassName}>
-        <Form method="POST">
-          <AuthenticityTokenInput />
+        <div className="grid flex-1 grid-cols-2 justify-end gap-2 min-[525px]:flex md:gap-4">
+          <DeleteNote id={data.note.id} />
           <Button
-            type="submit"
-            variant="destructive"
-            name="intent"
-            value="delete"
+            asChild
+            className="min-[525px]:max-md:aspect-square min-[525px]:max-md:px-0"
           >
-            Delete
+            <Link to="edit">
+              <span>Edit</span>
+            </Link>
           </Button>
-        </Form>
-        <Button asChild>
-          <Link to="edit">Edit</Link>
-        </Button>
+        </div>
       </div>
     </div>
+  )
+}
+
+export function DeleteNote({ id }: { id: string }) {
+  const actionData = useActionData<typeof action>()
+  const isPending = useIsPending()
+  const [form] = useForm({
+    id: 'delete-note',
+    lastSubmission: actionData?.submission,
+    constraint: getFieldsetConstraint(DeleteFormSchema),
+    onValidate({ formData }) {
+      return parse(formData, { schema: DeleteFormSchema })
+    },
+  })
+
+  return (
+    <Form method="post" {...form.props}>
+      <AuthenticityTokenInput />
+      <input type="hidden" name="noteId" value={id} />
+      <Button
+        type="submit"
+        name="intent"
+        value="delete-note"
+        variant="destructive"
+        disabled={isPending}
+        className="w-full max-md:aspect-square max-md:px-0"
+      >
+        <span>Delete</span>
+      </Button>
+      <ErrorList errors={form.errors} id={form.errorId} />
+    </Form>
   )
 }
 
