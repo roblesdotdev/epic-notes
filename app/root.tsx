@@ -1,5 +1,5 @@
 import { cssBundleHref } from '@remix-run/css-bundle'
-import { json } from '@remix-run/node'
+import { json, redirect } from '@remix-run/node'
 import type {
   MetaFunction,
   LinksFunction,
@@ -80,6 +80,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
         where: { id: userId },
       })
     : null
+
+  if (userId && !user) {
+    // something weird happened... The user is authenticated but we can't find
+    // them in the database. Maybe they were deleted? Let's log them out.
+    throw redirect('/', {
+      headers: {
+        'set-cookie': await sessionStorage.destroySession(cookieSession),
+      },
+    })
+  }
 
   return json(
     {
