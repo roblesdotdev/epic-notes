@@ -13,7 +13,7 @@ import { z } from 'zod'
 import { CheckboxField, ErrorList, Field } from '~/components/forms.tsx'
 import { Spacer } from '~/components/spacer.tsx'
 import { Button } from '~/components/ui/button.tsx'
-import { bcrypt } from '~/utils/auth.server.ts'
+import { bcrypt, getSessionExpirationDate } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
@@ -37,6 +37,7 @@ const SignupFormSchema = z
       required_error:
         'You must agree to the terms of service and privacy policy',
     }),
+    remember: z.boolean().optional(),
   })
   .superRefine(({ confirmPassword, password }, ctx) => {
     if (confirmPassword !== password) {
@@ -95,7 +96,7 @@ export async function action({ request }: DataFunctionArgs) {
     return json({ status: 'error', submission } as const, { status: 400 })
   }
 
-  const { user } = submission.value
+  const { user, remember } = submission.value
 
   const cookieSession = await sessionStorage.getSession(
     request.headers.get('cookie'),
@@ -104,7 +105,9 @@ export async function action({ request }: DataFunctionArgs) {
 
   return redirect('/', {
     headers: {
-      'set-cookie': await sessionStorage.commitSession(cookieSession),
+      'set-cookie': await sessionStorage.commitSession(cookieSession, {
+        expires: remember ? getSessionExpirationDate() : undefined,
+      }),
     },
   })
 }
@@ -203,6 +206,15 @@ export default function SignupRoute() {
               { type: 'checkbox' },
             )}
             errors={fields.agreeToTermsOfServiceAndPrivacyPolicy.errors}
+          />
+
+          <CheckboxField
+            labelProps={{
+              htmlFor: fields.remember.id,
+              children: 'Remember me',
+            }}
+            buttonProps={conform.input(fields.remember, { type: 'checkbox' })}
+            errors={fields.remember.errors}
           />
 
           <ErrorList errors={form.errors} id={form.errorId} />
