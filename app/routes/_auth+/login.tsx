@@ -1,10 +1,10 @@
 import { conform, useForm } from '@conform-to/react'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
-import {
-  json,
-  redirect,
-  type DataFunctionArgs,
-  type MetaFunction,
+import { json, redirect } from '@remix-run/node'
+import type {
+  DataFunctionArgs,
+  LoaderFunctionArgs,
+  MetaFunction,
 } from '@remix-run/node'
 import { Form, Link, useActionData } from '@remix-run/react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
@@ -14,7 +14,11 @@ import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { CheckboxField, ErrorList, Field } from '~/components/forms.tsx'
 import { Spacer } from '~/components/spacer.tsx'
 import { Button } from '~/components/ui/button.tsx'
-import { getSessionExpirationDate, login } from '~/utils/auth.server.ts'
+import {
+  getSessionExpirationDate,
+  login,
+  requireAnonymous,
+} from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
 import { useIsPending } from '~/utils/misc.tsx'
@@ -28,6 +32,7 @@ const LoginFormSchema = z.object({
 })
 
 export async function action({ request }: DataFunctionArgs) {
+  await requireAnonymous(request)
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
   checkHoneypot(formData)
@@ -75,6 +80,11 @@ export async function action({ request }: DataFunctionArgs) {
       }),
     },
   })
+}
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  await requireAnonymous(request)
+  return json({})
 }
 
 export default function LoginPage() {

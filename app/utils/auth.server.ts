@@ -123,3 +123,10 @@ export async function verifyUserPassword(
 
   return { id: userWithPassword.id }
 }
+
+export async function requireAnonymous(request: Request) {
+  const userId = await getUserId(request)
+  if (userId) {
+    throw redirect('/')
+  }
+}

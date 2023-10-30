@@ -1,10 +1,10 @@
 import { conform, useForm } from '@conform-to/react'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
-import {
-  json,
-  redirect,
-  type DataFunctionArgs,
-  type MetaFunction,
+import { json, redirect } from '@remix-run/node'
+import type {
+  LoaderFunctionArgs,
+  DataFunctionArgs,
+  MetaFunction,
 } from '@remix-run/node'
 import { Form, useActionData } from '@remix-run/react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
@@ -15,6 +15,7 @@ import { Spacer } from '~/components/spacer.tsx'
 import { Button } from '~/components/ui/button.tsx'
 import {
   getSessionExpirationDate,
+  requireAnonymous,
   signup,
   userIdKey,
 } from '~/utils/auth.server.ts'
@@ -54,6 +55,7 @@ const SignupFormSchema = z
   })
 
 export async function action({ request }: DataFunctionArgs) {
+  await requireAnonymous(request)
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
   checkHoneypot(formData)
@@ -100,6 +102,11 @@ export async function action({ request }: DataFunctionArgs) {
       }),
     },
   })
+}
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  await requireAnonymous(request)
+  return json({})
 }
 
 export const meta: MetaFunction = () => {
