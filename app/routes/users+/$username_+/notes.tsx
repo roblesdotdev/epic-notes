@@ -4,12 +4,14 @@ import { Link, NavLink, Outlet, useLoaderData } from '@remix-run/react'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { db } from '~/utils/db.server.ts'
 import { cn, invariantResponse } from '~/utils/misc.tsx'
+import { useOptionalUser } from '~/utils/user.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const username = params.username
   const owner = await db.user.findFirst({
     where: { username },
     select: {
+      id: true,
       name: true,
       username: true,
       image: { select: { id: true } },
@@ -24,6 +26,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 export default function NotesRoute() {
   const data = useLoaderData<typeof loader>()
+  const user = useOptionalUser()
+  const isOwner = user?.id === data.owner.id
 
   const ownerDisplayName = data.owner.name ?? data.owner.username
   const navLinkDefaultClassName =
@@ -42,6 +46,18 @@ export default function NotesRoute() {
               </h1>
             </Link>
             <ul className="overflow-y-auto overflow-x-hidden pb-12">
+              {isOwner ? (
+                <li className="p-1 pr-0">
+                  <NavLink
+                    to="new"
+                    className={({ isActive }) =>
+                      cn(navLinkDefaultClassName, isActive && 'bg-accent')
+                    }
+                  >
+                    New Note
+                  </NavLink>
+                </li>
+              ) : null}
               {data.owner.notes.map(note => (
                 <li className="p-1 pr-0" key={note.id}>
                   <NavLink

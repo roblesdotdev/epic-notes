@@ -47,6 +47,7 @@ import { Spacer } from './components/spacer.tsx'
 import { Button } from './components/ui/button.tsx'
 import { db } from './utils/db.server.ts'
 import { sessionStorage } from './utils/session.server.ts'
+import { useOptionalUser } from './utils/user.ts'
 
 const ThemeFormSchema = z.object({
   theme: z.enum(['light', 'dark']),
@@ -169,7 +170,7 @@ function Document({
 function App() {
   const data = useLoaderData<typeof loader>()
   const theme = useTheme()
-  const user = data.user
+  const user = useOptionalUser()
 
   return (
     <Document theme={theme} env={data.ENV}>
