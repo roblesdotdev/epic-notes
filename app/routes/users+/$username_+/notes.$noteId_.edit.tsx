@@ -35,8 +35,13 @@ import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import { cn, getNoteImgSrc, invariantResponse } from '~/utils/misc.tsx'
 import { ErrorList } from '~/components/forms.tsx'
+import { requireUser } from '~/utils/auth.server.ts'
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ params, request }: LoaderFunctionArgs) {
+  const user = await requireUser(request)
+  invariantResponse(user.username === params.username, 'Not authorized', {
+    status: 403,
+  })
   const note = await db.note.findUnique({
     select: {
       id: true,
@@ -51,6 +56,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     },
     where: {
       id: params.noteId,
+      ownerId: user.id,
     },
   })
 

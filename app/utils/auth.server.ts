@@ -138,3 +138,15 @@ export async function requireUserId(request: Request) {
   }
   return userId
 }
+
+export async function requireUser(request: Request) {
+  const userId = await requireUserId(request)
+  const user = await db.user.findUnique({
+    select: { id: true, username: true },
+    where: { id: userId },
+  })
+  if (!user) {
+    throw await logout({ request })
+  }
+  return user
+}

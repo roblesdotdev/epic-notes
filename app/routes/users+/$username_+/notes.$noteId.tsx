@@ -23,6 +23,7 @@ import { z } from 'zod'
 import { useForm } from '@conform-to/react'
 import { ErrorList } from '~/components/forms.tsx'
 import { useOptionalUser } from '~/utils/user.ts'
+import { requireUser } from '~/utils/auth.server.ts'
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const noteId = params.noteId
@@ -50,6 +51,10 @@ const DeleteFormSchema = z.object({
 })
 
 export async function action({ params, request }: ActionFunctionArgs) {
+  const user = await requireUser(request)
+  invariantResponse(user.username === params.username, 'Not authorized', {
+    status: 403,
+  })
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
   const submission = parse(formData, {
@@ -66,7 +71,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 
   const note = await db.note.findFirst({
     select: { id: true, owner: { select: { username: true } } },
-    where: { id: noteId, owner: { username: params.username } },
+    where: { id: noteId, ownerId: user.id },
   })
   invariantResponse(note, 'Not found', { status: 404 })
 
