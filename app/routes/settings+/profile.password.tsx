@@ -6,7 +6,11 @@ import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
 import { ErrorList, Field } from '~/components/forms.tsx'
 import { Button } from '~/components/ui/button.tsx'
-import { getPasswordHash, verifyUserPassword } from '~/utils/auth.server.ts'
+import {
+  getPasswordHash,
+  requireUserId,
+  verifyUserPassword,
+} from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import { useIsPending } from '~/utils/misc.tsx'
@@ -33,7 +37,7 @@ const ChangePasswordForm = z
   })
 
 export async function action({ request }: DataFunctionArgs) {
-  const userId = 'some_user_id' // we'll take care of this next
+  const userId = await requireUserId(request)
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
   const submission = await parse(formData, {

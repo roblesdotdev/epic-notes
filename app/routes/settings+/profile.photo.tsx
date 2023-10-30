@@ -5,8 +5,8 @@ import {
   redirect,
   unstable_createMemoryUploadHandler,
   unstable_parseMultipartFormData,
-  type DataFunctionArgs,
 } from '@remix-run/node'
+import type { LoaderFunctionArgs, DataFunctionArgs } from '@remix-run/node'
 import { Form, useActionData, useLoaderData } from '@remix-run/react'
 import { useState } from 'react'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
@@ -14,6 +14,7 @@ import { ServerOnly } from 'remix-utils/server-only'
 import { z } from 'zod'
 import { ErrorList } from '~/components/forms.tsx'
 import { Button } from '~/components/ui/button.tsx'
+import { requireUserId } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import {
@@ -36,8 +37,8 @@ const PhotoFormSchema = z.object({
     .refine(file => file.size <= MAX_SIZE, 'Image size must be less than 3MB'),
 })
 
-export async function loader() {
-  const userId = 'some_user_id' // we'll take care of this next
+export async function loader({ request }: LoaderFunctionArgs) {
+  const userId = await requireUserId(request)
   const user = await db.user.findUnique({
     where: { id: userId },
     select: {
@@ -52,7 +53,7 @@ export async function loader() {
 }
 
 export async function action({ request }: DataFunctionArgs) {
-  const userId = 'some_user_id' // we'll take care of this next
+  const userId = await requireUserId(request)
   const formData = await unstable_parseMultipartFormData(
     request,
     unstable_createMemoryUploadHandler({ maxPartSize: MAX_SIZE }),

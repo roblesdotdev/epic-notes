@@ -6,6 +6,7 @@ import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
 import { ErrorList, Field } from '~/components/forms.tsx'
 import { Button } from '~/components/ui/button.tsx'
+import { requireUserId } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import {
@@ -26,7 +27,7 @@ const ProfileFormSchema = z.object({
 })
 
 export async function loader({ request }: DataFunctionArgs) {
-  const userId = 'some_user_id' // we'll take care of this next
+  const userId = await requireUserId(request)
   const user = await db.user.findUnique({
     where: { id: userId },
     select: {
@@ -54,7 +55,7 @@ const profileUpdateActionIntent = 'update-profile'
 const deleteDataActionIntent = 'delete-data'
 
 export async function action({ request }: DataFunctionArgs) {
-  const userId = 'some_user_id' // we'll take care of this next
+  const userId = await requireUserId(request)
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
   const intent = formData.get('intent')
