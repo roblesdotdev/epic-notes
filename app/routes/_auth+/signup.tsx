@@ -13,7 +13,11 @@ import { z } from 'zod'
 import { CheckboxField, ErrorList, Field } from '~/components/forms.tsx'
 import { Spacer } from '~/components/spacer.tsx'
 import { Button } from '~/components/ui/button.tsx'
-import { bcrypt, getSessionExpirationDate } from '~/utils/auth.server.ts'
+import {
+  getSessionExpirationDate,
+  signup,
+  userIdKey,
+} from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
@@ -68,21 +72,7 @@ export async function action({ request }: DataFunctionArgs) {
         return
       }
     }).transform(async data => {
-      const { username, email, name, password } = data
-
-      const user = await db.user.create({
-        select: { id: true },
-        data: {
-          email: email.toLowerCase(),
-          username: username.toLowerCase(),
-          name,
-          password: {
-            create: {
-              hash: await bcrypt.hash(password, 10),
-            },
-          },
-        },
-      })
+      const user = await signup(data)
 
       return { ...data, user }
     }),
@@ -101,7 +91,7 @@ export async function action({ request }: DataFunctionArgs) {
   const cookieSession = await sessionStorage.getSession(
     request.headers.get('cookie'),
   )
-  cookieSession.set('userId', user.id)
+  cookieSession.set(userIdKey, user.id)
 
   return redirect('/', {
     headers: {

@@ -1,5 +1,5 @@
 import { cssBundleHref } from '@remix-run/css-bundle'
-import { json, redirect } from '@remix-run/node'
+import { json } from '@remix-run/node'
 import type {
   MetaFunction,
   LinksFunction,
@@ -7,7 +7,6 @@ import type {
   LoaderFunctionArgs,
 } from '@remix-run/node'
 import {
-  Form,
   Link,
   Links,
   LiveReload,
@@ -18,8 +17,6 @@ import {
   useFetcher,
   useFetchers,
   useLoaderData,
-  useLocation,
-  useSubmit,
 } from '@remix-run/react'
 import iconAssetUrl from './assets/favicon.svg'
 import fontStyles from './styles/fonts.css'
@@ -45,22 +42,12 @@ import {
 } from './utils/misc.tsx'
 import type { Toast } from './utils/toast.server.ts'
 import { getToast } from './utils/toast.server.ts'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 import { Spacer } from './components/spacer.tsx'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from './components/ui/alert-dialog.tsx'
 import { Button } from './components/ui/button.tsx'
 import { db } from './utils/db.server.ts'
-import { sessionStorage } from './utils/session.server.ts'
 import { useOptionalUser } from './utils/user.ts'
+import { getUserId } from './utils/auth.server.ts'
 
 const ThemeFormSchema = z.object({
   theme: z.enum(['light', 'dark']),
@@ -78,12 +65,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const [csrfToken, csrfCookieHeader] = await csrf.commitToken()
 
   const { toast, headers: toastHeaders } = await getToast(request)
-  const cookieSession = await sessionStorage.getSession(
-    request.headers.get('cookie'),
-  )
-  const userId = cookieSession.get('userId')
+  const userId = await getUserId(request)
   const user = userId
-    ? await db.user.findUnique({
+    ? await db.user.findUniqueOrThrow({
         select: {
           id: true,
           name: true,
@@ -93,16 +77,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
         where: { id: userId },
       })
     : null
-
-  if (userId && !user) {
-    // something weird happened... The user is authenticated but we can't find
-    // them in the database. Maybe they were deleted? Let's log them out.
-    throw redirect('/', {
-      headers: {
-        'set-cookie': await sessionStorage.destroySession(cookieSession),
-      },
-    })
-  }
 
   return json(
     {
@@ -161,12 +135,10 @@ function Document({
   children,
   theme,
   env,
-  isLoggedIn = false,
 }: {
   children: React.ReactNode
   theme?: Theme
   env?: Record<string, string>
-  isLoggedIn?: boolean
 }) {
   return (
     <html lang="en" className={`${theme} h-full overflow-x-hidden`}>
@@ -183,7 +155,6 @@ function Document({
             __html: `window.ENV = ${JSON.stringify(env)}`,
           }}
         />
-        {isLoggedIn ? <LogoutTimer /> : null}
         <Toaster closeButton position="top-center" />
         <ScrollRestoration />
         <Scripts />
@@ -199,7 +170,7 @@ function App() {
   const user = useOptionalUser()
 
   return (
-    <Document isLoggedIn={Boolean(user)} theme={theme} env={data.ENV}>
+    <Document theme={theme} env={data.ENV}>
       <header className="container mx-auto py-6">
         <nav className="flex justify-between">
           <Link to="/">
@@ -322,69 +293,6 @@ function ShowToast({ toast }: { toast: Toast }) {
     }, 0)
   }, [description, id, title, type])
   return null
-}
-
-function LogoutTimer() {
-  const [status, setStatus] = useState<'idle' | 'show-modal'>('idle')
-  const location = useLocation()
-  const submit = useSubmit()
-  const logoutTime = 5000
-  const modalTime = 2000
-  // 🦉 here's what would be more likely:
-  // const logoutTime = 1000 * 60 * 60;
-  // const modalTime = logoutTime - 1000 * 60 * 2;
-  const modalTimer = useRef<ReturnType<typeof setTimeout>>()
-  const logoutTimer = useRef<ReturnType<typeof setTimeout>>()
-
-  const logout = useCallback(() => {
-    submit(null, { method: 'POST', action: '/logout' })
-  }, [submit])
-
-  const cleanupTimers = useCallback(() => {
-    clearTimeout(modalTimer.current)
-    clearTimeout(logoutTimer.current)
-  }, [])
-
-  const resetTimers = useCallback(() => {
-    cleanupTimers()
-    modalTimer.current = setTimeout(() => {
-      setStatus('show-modal')
-    }, modalTime)
-    logoutTimer.current = setTimeout(logout, logoutTime)
-  }, [cleanupTimers, logout, logoutTime, modalTime])
-
-  useEffect(() => resetTimers(), [resetTimers, location.key])
-  useEffect(() => cleanupTimers, [cleanupTimers])
-
-  function closeModal() {
-    setStatus('idle')
-    resetTimers()
-  }
-
-  return (
-    <AlertDialog
-      aria-label="Pending Logout Notification"
-      open={status === 'show-modal'}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you still there?</AlertDialogTitle>
-        </AlertDialogHeader>
-        <AlertDialogDescription>
-          You are going to be logged out due to inactivity. Close this modal to
-          stay logged in.
-        </AlertDialogDescription>
-        <AlertDialogFooter className="flex items-end gap-8">
-          <AlertDialogCancel onClick={closeModal}>
-            Remain Logged In
-          </AlertDialogCancel>
-          <Form method="POST" action="/logout">
-            <AlertDialogAction type="submit">Logout</AlertDialogAction>
-          </Form>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
 }
 
 export function ErrorBoundary() {

@@ -14,9 +14,8 @@ import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { CheckboxField, ErrorList, Field } from '~/components/forms.tsx'
 import { Spacer } from '~/components/spacer.tsx'
 import { Button } from '~/components/ui/button.tsx'
-import { bcrypt, getSessionExpirationDate } from '~/utils/auth.server.ts'
+import { getSessionExpirationDate, login } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
-import { db } from '~/utils/db.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
 import { useIsPending } from '~/utils/misc.tsx'
 import { sessionStorage } from '~/utils/session.server.ts'
@@ -37,29 +36,16 @@ export async function action({ request }: DataFunctionArgs) {
       LoginFormSchema.transform(async (data, ctx) => {
         if (intent !== 'submit') return { ...data, user: null }
 
-        const userWithPassword = await db.user.findUnique({
-          select: { id: true, password: { select: { hash: true } } },
-          where: { username: data.username },
-        })
-        if (!userWithPassword || !userWithPassword.password) {
+        const user = await login(data)
+
+        if (!user) {
           ctx.addIssue({
             code: 'custom',
             message: 'Invalid username or password',
           })
           return z.NEVER
         }
-        const isValid = await bcrypt.compare(
-          data.password,
-          userWithPassword.password.hash,
-        )
-        if (!isValid) {
-          ctx.addIssue({
-            code: 'custom',
-            message: 'Invalid username or password',
-          })
-          return z.NEVER
-        }
-        return { ...data, user: { id: userWithPassword.id } }
+        return { ...data, user }
       }),
     async: true,
   })
