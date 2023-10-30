@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { promiseHash } from 'remix-utils/promise'
-import { img, createUser } from './utils.ts'
+import { img, createUser, createPassword } from './utils.ts'
 import { faker } from '@faker-js/faker'
 
 const prisma = new PrismaClient()
@@ -66,11 +66,13 @@ async function seed() {
   )
 
   for (let index = 0; index < totalUsers; index++) {
+    const userData = createUser()
     await prisma.user
       .create({
         select: { id: true },
         data: {
-          ...createUser(),
+          ...userData,
+          password: { create: createPassword(userData.username) },
           image: { create: userImages[index % 10] },
           notes: {
             create: Array.from({
@@ -139,6 +141,7 @@ async function seed() {
       username: 'kody',
       name: 'Kody',
       image: { create: kodyImages.kodyUser },
+      password: { create: createPassword('kodypassword') },
       notes: {
         create: [
           {

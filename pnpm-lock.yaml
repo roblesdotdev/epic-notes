@@ -41,6 +41,9 @@ dependencies:
   address:
     specifier: ^2.0.1
     version: 2.0.1
+  bcryptjs:
+    specifier: ^2.4.3
+    version: 2.4.3
   chalk:
     specifier: ^5.3.0
     version: 5.3.0
@@ -121,6 +124,9 @@ devDependencies:
   '@remix-run/eslint-config':
     specifier: ^2.1.0
     version: 2.1.0(eslint@8.52.0)(react@18.2.0)(typescript@5.2.2)
+  '@types/bcryptjs':
+    specifier: ^2.4.5
+    version: 2.4.5
   '@types/compression':
     specifier: ^1.7.4
     version: 1.7.4
@@ -1856,6 +1862,10 @@ packages:
     resolution: {integrity: sha512-0Z6Tr7wjKJIk4OUEjVUQMtyunLDy339vcMaj38Kpj6jM2OE1p3S4kXExKZ7a3uXQAPCoy3sbrP1wibDKaf39oA==}
     dev: true
 
+  /@types/bcryptjs@2.4.5:
+    resolution: {integrity: sha512-tOF6TivOIvq+TWQm78335CMdyVJhpBG3NUdWQDAp95ax4E2rSKbws/ELHLk5EBoucwx/tHt3/hhLOHwWJgVrSw==}
+    dev: true
+
   /@types/body-parser@1.19.4:
     resolution: {integrity: sha512-N7UDG0/xiPQa2D/XrVJXjkWbpqHCd2sBaB32ggRF2l83RhPfamgKGF8gwwqyksS95qUS5ZYF9aF+lLPRlwI2UA==}
     dependencies:
@@ -2504,6 +2514,10 @@ packages:
     engines: {node: '>= 0.8'}
     dependencies:
       safe-buffer: 5.1.2
+
+  /bcryptjs@2.4.3:
+    resolution: {integrity: sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ==}
+    dev: false
 
   /big-integer@1.6.51:
     resolution: {integrity: sha512-GPEid2Y9QU1Exl1rpO9B2IPJGHPSupF5GnVIP0blYvNOMer2bTvSWs1jGOUg04hTmu67nmLsQ9TBo1puaotBHg==}
