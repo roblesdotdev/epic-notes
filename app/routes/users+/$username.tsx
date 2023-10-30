@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { Form, Link, useLoaderData } from '@remix-run/react'
+import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { Spacer } from '~/components/spacer.tsx'
 import { Button } from '~/components/ui/button.tsx'
@@ -70,7 +71,8 @@ export default function KodyProfileRoute() {
             Joined {data.userJoinedDisplay}
           </p>
           {isLoggedInUser ? (
-            <Form className="mt-3">
+            <Form className="mt-3" method="POST" action="/logout">
+              <AuthenticityTokenInput />
               <Button type="submit" variant="link" size="pill">
                 Logout
               </Button>
