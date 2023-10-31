@@ -15,11 +15,7 @@ import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { CheckboxField, ErrorList, Field } from '~/components/forms.tsx'
 import { Spacer } from '~/components/spacer.tsx'
 import { Button } from '~/components/ui/button.tsx'
-import {
-  getSessionExpirationDate,
-  login,
-  requireAnonymous,
-} from '~/utils/auth.server.ts'
+import { login, requireAnonymous, sessionKey } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
 import { useIsPending } from '~/utils/misc.tsx'
@@ -41,18 +37,18 @@ export async function action({ request }: DataFunctionArgs) {
   const submission = await parse(formData, {
     schema: intent =>
       LoginFormSchema.transform(async (data, ctx) => {
-        if (intent !== 'submit') return { ...data, user: null }
+        if (intent !== 'submit') return { ...data, session: null }
 
-        const user = await login(data)
+        const session = await login(data)
 
-        if (!user) {
+        if (!session) {
           ctx.addIssue({
             code: 'custom',
             message: 'Invalid username or password',
           })
           return z.NEVER
         }
-        return { ...data, user }
+        return { ...data, session }
       }),
     async: true,
   })
@@ -64,21 +60,21 @@ export async function action({ request }: DataFunctionArgs) {
     delete submission.value?.password
     return json({ status: 'idle', submission } as const)
   }
-  if (!submission.value?.user) {
+  if (!submission.value?.session) {
     return json({ status: 'error', submission } as const, { status: 400 })
   }
 
-  const { user, remember, redirectTo } = submission.value
+  const { session, remember, redirectTo } = submission.value
 
   const cookieSession = await sessionStorage.getSession(
     request.headers.get('cookie'),
   )
-  cookieSession.set('userId', user.id)
+  cookieSession.set(sessionKey, session.id)
 
   return redirect(safeRedirect(redirectTo), {
     headers: {
       'set-cookie': await sessionStorage.commitSession(cookieSession, {
-        expires: remember ? getSessionExpirationDate() : undefined,
+        expires: remember ? session.expirationDate : undefined,
       }),
     },
   })
