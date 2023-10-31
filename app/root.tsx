@@ -48,6 +48,7 @@ import { Button } from './components/ui/button.tsx'
 import { db } from './utils/db.server.ts'
 import { useOptionalUser } from './utils/user.ts'
 import { getUserId } from './utils/auth.server.ts'
+import { userHasRole } from './utils/permissions.ts'
 
 const ThemeFormSchema = z.object({
   theme: z.enum(['light', 'dark']),
@@ -73,6 +74,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
           name: true,
           username: true,
           image: { select: { id: true } },
+          roles: {
+            select: {
+              name: true,
+              permissions: {
+                select: { entity: true, action: true, access: true },
+              },
+            },
+          },
         },
         where: { id: userId },
       })
@@ -168,6 +177,7 @@ function App() {
   const data = useLoaderData<typeof loader>()
   const theme = useTheme()
   const user = useOptionalUser()
+  const userIsAdmin = userHasRole(user, 'admin')
 
   return (
     <Document theme={theme} env={data.ENV}>
@@ -195,6 +205,13 @@ function App() {
                     </span>
                   </Link>
                 </Button>
+                {userIsAdmin ? (
+                  <Button asChild variant="secondary">
+                    <Link to="/admin">
+                      <span className="hidden sm:block">Admin</span>
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
             ) : (
               <Button asChild variant="default" size="sm">

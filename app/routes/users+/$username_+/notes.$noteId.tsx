@@ -5,6 +5,7 @@ import type {
 } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { Form, Link, useActionData, useLoaderData } from '@remix-run/react'
+import { formatDistanceToNow } from 'date-fns'
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
 import { Button } from '~/components/ui/button.tsx'
@@ -24,24 +25,33 @@ import { useForm } from '@conform-to/react'
 import { ErrorList } from '~/components/forms.tsx'
 import { useOptionalUser } from '~/utils/user.ts'
 import { requireUser } from '~/utils/auth.server.ts'
+import {
+  requireUserWithPermission,
+  userHasPermission,
+} from '~/utils/permissions.ts'
 
-export async function loader({ params }: LoaderFunctionArgs) {
-  const noteId = params.noteId
+export async function loader({ params, request }: LoaderFunctionArgs) {
   const note = await db.note.findUnique({
-    where: { id: noteId },
+    where: { id: params.noteId },
     select: {
       id: true,
       title: true,
       content: true,
       ownerId: true,
+      updatedAt: true,
       images: {
         select: { id: true, altText: true },
       },
     },
   })
   invariantResponse(note, 'Not found note', { status: 404 })
+
+  const date = new Date(note.updatedAt)
+  const timeAgo = formatDistanceToNow(date)
+
   return json({
     note,
+    timeAgo,
   })
 }
 
@@ -52,9 +62,6 @@ const DeleteFormSchema = z.object({
 
 export async function action({ params, request }: ActionFunctionArgs) {
   const user = await requireUser(request)
-  invariantResponse(user.username === params.username, 'Not authorized', {
-    status: 403,
-  })
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
   const submission = parse(formData, {
@@ -70,10 +77,16 @@ export async function action({ params, request }: ActionFunctionArgs) {
   const { noteId } = submission.value
 
   const note = await db.note.findFirst({
-    select: { id: true, owner: { select: { username: true } } },
-    where: { id: noteId, ownerId: user.id },
+    select: { id: true, ownerId: true, owner: { select: { username: true } } },
+    where: { id: noteId },
   })
   invariantResponse(note, 'Not found', { status: 404 })
+
+  const isOwner = note.ownerId === user.id
+  await requireUserWithPermission(
+    request,
+    isOwner ? `delete:note:own` : `delete:note:any`,
+  )
 
   await db.note.delete({ where: { id: noteId } })
 
@@ -110,6 +123,11 @@ export default function SomeNoteId() {
   const data = useLoaderData<typeof loader>()
   const user = useOptionalUser()
   const isOwner = user?.id === data.note.ownerId
+  const canDelete = userHasPermission(
+    user,
+    isOwner ? 'delete:note:own' : 'delete:note:any',
+  )
+  const displayBar = canDelete || isOwner
 
   return (
     <div className="absolute inset-0 flex flex-col px-10">
@@ -132,10 +150,13 @@ export default function SomeNoteId() {
           {data.note.content}
         </p>
       </div>
-      {isOwner ? (
+      {displayBar ? (
         <div className={floatingToolbarClassName}>
+          <span className="text-sm text-foreground/90 max-[524px]:hidden">
+            {data.timeAgo} ago
+          </span>
           <div className="grid flex-1 grid-cols-2 justify-end gap-2 min-[525px]:flex md:gap-4">
-            <DeleteNote id={data.note.id} />
+            {canDelete ? <DeleteNote id={data.note.id} /> : null}
             <Button
               asChild
               className="min-[525px]:max-md:aspect-square min-[525px]:max-md:px-0"
@@ -186,6 +207,7 @@ export function ErrorBoundary() {
   return (
     <GeneralErrorBoundary
       statusHandlers={{
+        403: () => <p>You are not allowed to do that</p>,
         404: ({ params }) => (
           <p>No note with the id "{params.noteId}" exists</p>
         ),
