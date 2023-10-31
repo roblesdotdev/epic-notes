@@ -74,6 +74,7 @@ async function seed() {
           ...userData,
           password: { create: createPassword(userData.username) },
           image: { create: userImages[index % 10] },
+          roles: { connect: { name: 'user' } },
           notes: {
             create: Array.from({
               length: faker.number.int({ min: 1, max: 3 }),
@@ -141,6 +142,7 @@ async function seed() {
       username: 'kody',
       name: 'Kody',
       image: { create: kodyImages.kodyUser },
+      roles: { connect: [{ name: 'user' }, { name: 'admin' }] },
       password: { create: createPassword('kodypassword') },
       notes: {
         create: [
