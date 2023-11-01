@@ -101,6 +101,15 @@ export async function action({ request }: DataFunctionArgs) {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAnonymous(request)
+  /*
+  const response = await sendEmail({
+    to: 'kody@kcd.dev',
+    subject: 'Hello World',
+    text: 'This is the plain text version',
+    html: '<p>This is the HTML version</p>',
+  })
+  console.log(response)
+  */
   return json({})
 }
 
