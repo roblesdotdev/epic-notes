@@ -6,7 +6,8 @@ import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
 import { ErrorList, Field } from '~/components/forms.tsx'
 import { Button } from '~/components/ui/button.tsx'
-import { requireUserId } from '~/utils/auth.server.ts'
+import { StatusButton } from '~/components/ui/status-button.tsx'
+import { requireUserId, sessionKey } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import {
@@ -14,6 +15,7 @@ import {
   invariantResponse,
   useDoubleCheck,
 } from '~/utils/misc.tsx'
+import { sessionStorage } from '~/utils/session.server.ts'
 import {
   EmailSchema,
   NameSchema,
@@ -38,6 +40,15 @@ export async function loader({ request }: DataFunctionArgs) {
       image: {
         select: { id: true },
       },
+      _count: {
+        select: {
+          sessions: {
+            where: {
+              expirationDate: { gt: new Date() },
+            },
+          },
+        },
+      },
     },
   })
 
@@ -52,6 +63,7 @@ type ProfileActionArgs = {
   formData: FormData
 }
 const profileUpdateActionIntent = 'update-profile'
+const signOutOfSessionsActionIntent = 'sign-out-of-sessions'
 const deleteDataActionIntent = 'delete-data'
 
 export async function action({ request }: DataFunctionArgs) {
@@ -62,6 +74,9 @@ export async function action({ request }: DataFunctionArgs) {
   switch (intent) {
     case profileUpdateActionIntent: {
       return profileUpdateAction({ request, userId, formData })
+    }
+    case signOutOfSessionsActionIntent: {
+      return signOutOfSessionsAction({ request, userId, formData })
     }
     case deleteDataActionIntent: {
       return deleteDataAction({ request, userId, formData })
@@ -115,6 +130,7 @@ export default function EditUserProfile() {
             Download your data
           </a>
         </div>
+        <SignOutOfSessions />
         <DeleteData />
       </div>
     </div>
@@ -259,6 +275,60 @@ function DeleteData() {
           {dc.doubleCheck ? `Are you sure?` : `Delete all your data`}
         </Button>
       </fetcher.Form>
+    </div>
+  )
+}
+
+async function signOutOfSessionsAction({ request, userId }: ProfileActionArgs) {
+  const cookieSession = await sessionStorage.getSession(
+    request.headers.get('cookie'),
+  )
+  const sessionId = cookieSession.get(sessionKey)
+  invariantResponse(
+    sessionId,
+    'You must be authenticated to sign out of other sessions',
+  )
+  await db.session.deleteMany({
+    where: {
+      userId,
+      id: { not: sessionId },
+    },
+  })
+  return json({ status: 'success' } as const)
+}
+
+function SignOutOfSessions() {
+  const data = useLoaderData<typeof loader>()
+  const dc = useDoubleCheck()
+
+  const fetcher = useFetcher<typeof signOutOfSessionsAction>()
+  const otherSessionsCount = data.user._count.sessions - 1
+  return (
+    <div>
+      {otherSessionsCount ? (
+        <fetcher.Form method="POST">
+          <AuthenticityTokenInput />
+          <StatusButton
+            {...dc.getButtonProps({
+              type: 'submit',
+              name: 'intent',
+              value: signOutOfSessionsActionIntent,
+            })}
+            variant={dc.doubleCheck ? 'destructive' : 'default'}
+            status={
+              fetcher.state !== 'idle'
+                ? 'pending'
+                : fetcher.data?.status ?? 'idle'
+            }
+          >
+            {dc.doubleCheck
+              ? `Are you sure?`
+              : `Sign out of ${otherSessionsCount} other sessions`}
+          </StatusButton>
+        </fetcher.Form>
+      ) : (
+        <span>This is your only session</span>
+      )}
     </div>
   )
 }
