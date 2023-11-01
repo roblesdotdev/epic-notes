@@ -25,14 +25,10 @@ export async function getUserId(request: Request) {
     where: { id: sessionId, expirationDate: { gt: new Date() } },
   })
   if (!session?.user) {
-    throw logout({ request })
+    throw await logout({ request })
   }
   return session.user.id
 }
-
-// 🐨 create a function called `requireAnonymous` here that takes a request
-// 🐨 get the user's Id from the session using getUserId
-// 🐨 if there's a userId, then throw a redirect to '/' (otherwise do nothing)
 
 export async function login({
   username,
