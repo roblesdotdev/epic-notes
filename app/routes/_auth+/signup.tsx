@@ -23,7 +23,7 @@ import { useIsPending } from '~/utils/misc.tsx'
 import { EmailSchema } from '~/utils/user-validation.ts'
 import { prepareVerification } from './verify.tsx'
 
-const SignupSchema = z.object({
+export const SignupSchema = z.object({
   email: EmailSchema,
   redirectTo: z.string().optional(),
 })

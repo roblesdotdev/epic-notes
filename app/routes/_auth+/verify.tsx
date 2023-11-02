@@ -18,13 +18,14 @@ import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import { getDomainUrl, useIsPending } from '~/utils/misc.tsx'
 import { handleVerification as handleOnboardingVerification } from './onboarding.tsx'
+import { handleVerification as handleResetPasswordVerification } from './reset-password.tsx'
 
 export const codeQueryParam = 'code'
 export const targetQueryParam = 'target'
 export const typeQueryParam = 'type'
 export const redirectToQueryParam = 'redirectTo'
 
-const types = ['onboarding'] as const
+const types = ['onboarding', 'reset-password'] as const
 const VerificationTypeSchema = z.enum(types)
 export type VerificationTypes = z.infer<typeof VerificationTypeSchema>
 
@@ -203,6 +204,9 @@ async function validateRequest(
   switch (submissionValue[typeQueryParam]) {
     case 'onboarding': {
       return handleOnboardingVerification({ request, body, submission })
+    }
+    case 'reset-password': {
+      return handleResetPasswordVerification({ request, body, submission })
     }
   }
 }

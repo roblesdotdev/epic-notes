@@ -176,3 +176,23 @@ export async function requireUser(request: Request) {
   }
   return user
 }
+
+export async function resetUserPassword({
+  username,
+  password,
+}: {
+  username: User['username']
+  password: string
+}) {
+  const hashedPassword = await bcrypt.hash(password, 10)
+  return db.user.update({
+    where: { username },
+    data: {
+      password: {
+        update: {
+          hash: hashedPassword,
+        },
+      },
+    },
+  })
+}
