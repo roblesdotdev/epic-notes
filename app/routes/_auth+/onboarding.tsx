@@ -23,7 +23,7 @@ import { requireAnonymous, sessionKey, signup } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
-import { useIsPending } from '~/utils/misc.tsx'
+import { invariant, useIsPending } from '~/utils/misc.tsx'
 import { sessionStorage } from '~/utils/session.server.ts'
 import {
   NameSchema,
@@ -31,8 +31,9 @@ import {
   UsernameSchema,
 } from '~/utils/user-validation.ts'
 import { verifySessionStorage } from '~/utils/verification.server.ts'
+import type { VerifyFunctionArgs } from './verify.tsx'
 
-export const onboardingEmailSessionKey = 'onboardingEmail'
+const onboardingEmailSessionKey = 'onboardingEmail'
 
 const SignupFormSchema = z
   .object({
@@ -129,6 +130,22 @@ async function requireOnboardingEmail(request: Request) {
 export async function loader({ request }: LoaderFunctionArgs) {
   const email = await requireOnboardingEmail(request)
   return json({ email })
+}
+
+export async function handleVerification({
+  request,
+  submission,
+}: VerifyFunctionArgs) {
+  invariant(submission.value, 'submission.value should be defined by now')
+  const verifySession = await verifySessionStorage.getSession(
+    request.headers.get('cookie'),
+  )
+  verifySession.set(onboardingEmailSessionKey, submission.value.target)
+  return redirect('/onboarding', {
+    headers: {
+      'set-cookie': await verifySessionStorage.commitSession(verifySession),
+    },
+  })
 }
 
 export const meta: MetaFunction = () => {
