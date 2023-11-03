@@ -20,13 +20,14 @@ import { getDomainUrl, useIsPending } from '~/utils/misc.tsx'
 import { handleVerification as handleOnboardingVerification } from './onboarding.tsx'
 import { handleVerification as handleResetPasswordVerification } from './reset-password.tsx'
 import { handleVerification as handleChangeEmailVerification } from '~/routes/settings+/profile.change-email.tsx'
+import type { twoFAVerifyVerificationType } from '../settings+/profile.two-factor.verify.tsx'
 
 export const codeQueryParam = 'code'
 export const targetQueryParam = 'target'
 export const typeQueryParam = 'type'
 export const redirectToQueryParam = 'redirectTo'
 
-const types = ['onboarding', 'reset-password', 'change-email'] as const
+const types = ['onboarding', 'reset-password', 'change-email', '2fa'] as const
 const VerificationTypeSchema = z.enum(types)
 export type VerificationTypes = z.infer<typeof VerificationTypeSchema>
 
@@ -136,7 +137,7 @@ export async function isCodeValid({
   target,
 }: {
   code: string
-  type: VerificationTypes
+  type: VerificationTypes | typeof twoFAVerifyVerificationType
   target: string
 }) {
   const verification = await db.verification.findUnique({
@@ -211,6 +212,9 @@ async function validateRequest(
     }
     case 'change-email': {
       return handleChangeEmailVerification({ request, body, submission })
+    }
+    case '2fa': {
+      throw new Error('Not implemented yet')
     }
   }
 }

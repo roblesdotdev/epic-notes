@@ -17,6 +17,7 @@ import {
 } from '~/utils/misc.tsx'
 import { sessionStorage } from '~/utils/session.server.ts'
 import { NameSchema, UsernameSchema } from '~/utils/user-validation.ts'
+import { twoFAVerificationType } from './profile.two-factor.tsx'
 
 const ProfileFormSchema = z.object({
   name: NameSchema.optional(),
@@ -25,7 +26,7 @@ const ProfileFormSchema = z.object({
 
 export async function loader({ request }: DataFunctionArgs) {
   const userId = await requireUserId(request)
-  const user = await db.user.findUnique({
+  const user = await db.user.findUniqueOrThrow({
     where: { id: userId },
     select: {
       id: true,
@@ -47,9 +48,12 @@ export async function loader({ request }: DataFunctionArgs) {
     },
   })
 
-  invariantResponse(user, 'User not found', { status: 404 })
+  const twoFactorVerification = await db.verification.findUnique({
+    select: { id: true },
+    where: { target_type: { type: twoFAVerificationType, target: userId } },
+  })
 
-  return json({ user })
+  return json({ user, isTwoFAEnabled: Boolean(twoFactorVerification) })
 }
 
 type ProfileActionArgs = {
@@ -116,6 +120,11 @@ export default function EditUserProfile() {
       <div className="col-span-full flex flex-col gap-6">
         <div>
           <Link to="change-email">Change email from {data.user.email}</Link>
+        </div>
+        <div>
+          <Link to="two-factor">
+            {data.isTwoFAEnabled ? <>2FA is enabled</> : <>Enable 2FA</>}
+          </Link>
         </div>
         <div>
           <Link to="password">Change password</Link>
