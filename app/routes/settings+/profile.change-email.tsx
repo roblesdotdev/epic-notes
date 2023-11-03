@@ -7,27 +7,70 @@ import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { z } from 'zod'
 import { ErrorList, Field } from '~/components/forms.tsx'
 import { Button } from '~/components/ui/button.tsx'
-import { type VerifyFunctionArgs } from '~/routes/_auth+/verify.tsx'
+import {
+  prepareVerification,
+  type VerifyFunctionArgs,
+} from '~/routes/_auth+/verify.tsx'
 import { requireUserId } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import { sendEmail } from '~/utils/email.server.ts'
-import { useIsPending } from '~/utils/misc.tsx'
+import { invariant, useIsPending } from '~/utils/misc.tsx'
+import { redirectWithToast } from '~/utils/toast.server.ts'
 import { EmailSchema } from '~/utils/user-validation.ts'
+import { verifySessionStorage } from '~/utils/verification.server.ts'
 
 export const handle = {
   breadcrumb: <>Change Email</>,
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- we'll use this below
 const newEmailAddressSessionKey = 'new-email-address'
 
 export async function handleVerification({
   request,
   submission,
 }: VerifyFunctionArgs) {
-  submission.error[''] = [`We'll implement this soon`]
-  return json({ status: 'error', submission } as const, { status: 500 })
+  invariant(submission.value, 'submission.value should be defined by now')
+
+  const verifySession = await verifySessionStorage.getSession(
+    request.headers.get('cookie'),
+  )
+  const newEmail = verifySession.get(newEmailAddressSessionKey)
+  if (!newEmail) {
+    submission.error[''] = [
+      'You must submit the code on the same device that requested the email change.',
+    ]
+    return json({ status: 'error', submission } as const, { status: 400 })
+  }
+  const preUpdateUser = await db.user.findFirstOrThrow({
+    select: { email: true },
+    where: { id: submission.value.target },
+  })
+  const user = await db.user.update({
+    where: { id: submission.value.target },
+    select: { id: true, email: true, username: true },
+    data: { email: newEmail },
+  })
+
+  void sendEmail({
+    to: preUpdateUser.email,
+    subject: 'Epic Stack email changed',
+    react: <EmailChangeNoticeEmail userId={user.id} />,
+  })
+
+  throw await redirectWithToast(
+    '/settings/profile',
+    {
+      title: 'Email Changed',
+      type: 'success',
+      description: `Your email has been changed to ${user.email}`,
+    },
+    {
+      headers: {
+        'set-cookie': await verifySessionStorage.destroySession(verifySession),
+      },
+    },
+  )
 }
 
 const ChangeEmailSchema = z.object({
@@ -48,8 +91,7 @@ export async function loader({ request }: DataFunctionArgs) {
 }
 
 export async function action({ request }: DataFunctionArgs) {
-  // 🐨 get the userId from this call:
-  await requireUserId(request)
+  const userId = await requireUserId(request)
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
   const submission = await parse(formData, {
@@ -74,12 +116,13 @@ export async function action({ request }: DataFunctionArgs) {
   if (!submission.value) {
     return json({ status: 'error', submission } as const, { status: 400 })
   }
-  // 🐨 get the otp, redirectUrl, and verifyUrl from prepareVerification
-  // 💰 you'll need to create a new verification type in verify.tsx
-  // 🐨 the target should be the user's id
-  const otp = 'get this from prepareVerification'
-  const redirectTo = 'get this from prepareVerification'
-  const verifyUrl = 'get this from prepareVerification'
+
+  const { otp, redirectTo, verifyUrl } = await prepareVerification({
+    period: 10 * 60,
+    request,
+    target: userId,
+    type: 'change-email',
+  })
 
   const response = await sendEmail({
     to: submission.value.email,
@@ -88,12 +131,14 @@ export async function action({ request }: DataFunctionArgs) {
   })
 
   if (response.status === 'success') {
-    // 🐨 get the user's verifySession
-    // 🐨 set the newEmailAddressSessionKey to the email address
+    const verifySession = await verifySessionStorage.getSession(
+      request.headers.get('cookie'),
+    )
+    verifySession.set(newEmailAddressSessionKey, submission.value.email)
 
     return redirect(redirectTo.toString(), {
       headers: {
-        // 🐨 commit the verifySession here
+        'set-cookie': await verifySessionStorage.commitSession(verifySession),
       },
     })
   } else {
