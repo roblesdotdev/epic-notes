@@ -4,8 +4,10 @@ import { AuthenticityTokenInput } from 'remix-utils/csrf/react'
 import { Button } from '~/components/ui/button.tsx'
 import { requireUserId } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
+import { db } from '~/utils/db.server.ts'
 import { useDoubleCheck, useIsPending } from '~/utils/misc.tsx'
 import { redirectWithToast } from '~/utils/toast.server.ts'
+import { twoFAVerificationType } from './profile.two-factor.tsx'
 
 export const handle = {
   breadcrumb: <>Disable</>,
@@ -17,12 +19,17 @@ export async function loader({ request }: DataFunctionArgs) {
 }
 
 export async function action({ request }: DataFunctionArgs) {
-  await requireUserId(request)
+  const userId = await requireUserId(request)
   const formData = await request.formData()
   await validateCSRF(formData, request.headers)
+
+  await db.verification.delete({
+    where: { target_type: { target: userId, type: twoFAVerificationType } },
+  })
+
   throw await redirectWithToast('/settings/profile/two-factor', {
-    title: '2FA Disabled (jk)',
-    description: 'This has not yet been implemented',
+    title: '2FA Disabled',
+    description: 'Two factor authentication has been disabled.',
   })
 }
 
