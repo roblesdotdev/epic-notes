@@ -8,13 +8,42 @@ import { db } from '~/utils/db.server.ts'
 import { useDoubleCheck, useIsPending } from '~/utils/misc.tsx'
 import { redirectWithToast } from '~/utils/toast.server.ts'
 import { twoFAVerificationType } from './profile.two-factor.tsx'
+import { getRedirectToUrl } from '../_auth+/verify.tsx'
+import { shouldRequestTwoFA } from '../_auth+/login.tsx'
 
 export const handle = {
   breadcrumb: <>Disable</>,
 }
 
+export async function requireRecentVerification({
+  request,
+  userId,
+}: {
+  request: Request
+  userId: string
+}) {
+  const shouldReverify = await shouldRequestTwoFA({ request, userId })
+  if (shouldReverify) {
+    const reqUrl = new URL(request.url)
+    const redirectUrl = getRedirectToUrl({
+      request,
+      target: userId,
+      type: twoFAVerificationType,
+      redirectTo: reqUrl.pathname + reqUrl.search,
+    })
+    throw await redirectWithToast(redirectUrl.toString(), {
+      title: 'Please Reverify',
+      description: 'Please reverify your account before proceeding',
+    })
+  }
+}
+
 export async function loader({ request }: DataFunctionArgs) {
-  await requireUserId(request)
+  const userId = await requireUserId(request)
+  await requireRecentVerification({
+    request,
+    userId,
+  })
   return json({})
 }
 
