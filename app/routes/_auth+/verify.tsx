@@ -17,10 +17,11 @@ import { Button } from '~/components/ui/button.tsx'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { db } from '~/utils/db.server.ts'
 import { getDomainUrl, useIsPending } from '~/utils/misc.tsx'
+import type { twoFAVerifyVerificationType } from '../settings+/profile.two-factor.verify.tsx'
 import { handleVerification as handleOnboardingVerification } from './onboarding.tsx'
 import { handleVerification as handleResetPasswordVerification } from './reset-password.tsx'
 import { handleVerification as handleChangeEmailVerification } from '~/routes/settings+/profile.change-email.tsx'
-import type { twoFAVerifyVerificationType } from '../settings+/profile.two-factor.verify.tsx'
+import { handleVerification as handleLoginTwoFactorVerification } from '~/routes/_auth+/login.tsx'
 
 export const codeQueryParam = 'code'
 export const targetQueryParam = 'target'
@@ -194,27 +195,32 @@ async function validateRequest(
 
   const { value: submissionValue } = submission
 
-  await db.verification.delete({
-    where: {
-      target_type: {
-        target: submissionValue[targetQueryParam],
-        type: submissionValue[typeQueryParam],
+  async function deleteVerification() {
+    await db.verification.delete({
+      where: {
+        target_type: {
+          target: submissionValue[targetQueryParam],
+          type: submissionValue[typeQueryParam],
+        },
       },
-    },
-  })
+    })
+  }
 
   switch (submissionValue[typeQueryParam]) {
     case 'onboarding': {
+      await deleteVerification()
       return handleOnboardingVerification({ request, body, submission })
     }
     case 'reset-password': {
+      await deleteVerification()
       return handleResetPasswordVerification({ request, body, submission })
     }
     case 'change-email': {
+      await deleteVerification()
       return handleChangeEmailVerification({ request, body, submission })
     }
     case '2fa': {
-      throw new Error('Not implemented yet')
+      return handleLoginTwoFactorVerification({ request, body, submission })
     }
   }
 }
@@ -224,6 +230,30 @@ export default function VerifyRoute() {
   const [searchParams] = useSearchParams()
   const isPending = useIsPending()
   const actionData = useActionData<typeof action>()
+  const type = VerificationTypeSchema.parse(searchParams.get(typeQueryParam))
+
+  const checkEmail = (
+    <>
+      <h1 className="text-h1">Check your email</h1>
+      <p className="mt-3 text-body-md text-muted-foreground">
+        We've sent you a code to verify your email address.
+      </p>
+    </>
+  )
+
+  const headings: Record<VerificationTypes, React.ReactNode> = {
+    onboarding: checkEmail,
+    'reset-password': checkEmail,
+    'change-email': checkEmail,
+    '2fa': (
+      <>
+        <h1 className="text-h1">Check your 2FA app</h1>
+        <p className="mt-3 text-body-md text-muted-foreground">
+          Please enter your 2FA code to verify your identity.
+        </p>
+      </>
+    ),
+  }
 
   const [form, fields] = useForm({
     id: 'verify-form',
@@ -242,12 +272,7 @@ export default function VerifyRoute() {
 
   return (
     <div className="container flex flex-col justify-center pb-32 pt-20">
-      <div className="text-center">
-        <h1 className="text-h1">Check your email</h1>
-        <p className="mt-3 text-body-md text-muted-foreground">
-          We've sent you a code to verify your email address.
-        </p>
-      </div>
+      <div className="text-center">{headings[type]}</div>
 
       <Spacer size="xs" />
 

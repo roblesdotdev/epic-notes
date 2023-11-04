@@ -18,9 +18,61 @@ import { Button } from '~/components/ui/button.tsx'
 import { login, requireAnonymous, sessionKey } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
-import { useIsPending } from '~/utils/misc.tsx'
+import { invariant, useIsPending } from '~/utils/misc.tsx'
 import { sessionStorage } from '~/utils/session.server.ts'
 import { PasswordSchema, UsernameSchema } from '~/utils/user-validation.ts'
+import { twoFAVerificationType } from '../settings+/profile.two-factor.tsx'
+import { db } from '~/utils/db.server.ts'
+import { verifySessionStorage } from '~/utils/verification.server.ts'
+import { getRedirectToUrl, type VerifyFunctionArgs } from './verify.tsx'
+import { redirectWithToast } from '~/utils/toast.server.ts'
+
+const unverifiedSessionIdKey = 'unverified-session-id'
+const rememberKey = 'remember-me'
+
+export async function handleVerification({
+  request,
+  submission,
+}: VerifyFunctionArgs) {
+  invariant(submission.value, 'Submission should have a value by this point')
+  const cookieSession = await sessionStorage.getSession(
+    request.headers.get('cookie'),
+  )
+  const verifySession = await verifySessionStorage.getSession(
+    request.headers.get('cookie'),
+  )
+
+  const session = await db.session.findUnique({
+    select: { expirationDate: true },
+    where: { id: verifySession.get(unverifiedSessionIdKey) },
+  })
+  if (!session) {
+    throw await redirectWithToast('/login', {
+      type: 'error',
+      title: 'Invalid session',
+      description: 'Could not find session to verify. Please try again.',
+    })
+  }
+
+  cookieSession.set(sessionKey, verifySession.get(unverifiedSessionIdKey))
+
+  const remember = verifySession.get(rememberKey)
+  const { redirectTo } = submission.value
+
+  const headers = new Headers()
+  headers.append(
+    'set-cookie',
+    await sessionStorage.commitSession(cookieSession, {
+      expires: remember ? session.expirationDate : undefined,
+    }),
+  )
+  headers.append(
+    'set-cookie',
+    await verifySessionStorage.destroySession(verifySession),
+  )
+
+  return redirect(safeRedirect(redirectTo), { headers })
+}
 
 const LoginFormSchema = z.object({
   username: UsernameSchema,
@@ -66,18 +118,41 @@ export async function action({ request }: DataFunctionArgs) {
 
   const { session, remember, redirectTo } = submission.value
 
-  const cookieSession = await sessionStorage.getSession(
-    request.headers.get('cookie'),
-  )
-  cookieSession.set(sessionKey, session.id)
-
-  return redirect(safeRedirect(redirectTo), {
-    headers: {
-      'set-cookie': await sessionStorage.commitSession(cookieSession, {
-        expires: remember ? session.expirationDate : undefined,
-      }),
+  const verification = await db.verification.findUnique({
+    select: { id: true },
+    where: {
+      target_type: { target: session.userId, type: twoFAVerificationType },
     },
   })
+  const userHasTwoFactor = Boolean(verification)
+  if (userHasTwoFactor) {
+    const verifySession = await verifySessionStorage.getSession()
+    verifySession.set('unverified-session-id', session.id)
+    verifySession.set('remember-me', remember)
+    const redirectUrl = getRedirectToUrl({
+      request,
+      type: twoFAVerificationType,
+      target: session.userId,
+    })
+    return redirect(redirectUrl.toString(), {
+      headers: {
+        'set-cookie': await verifySessionStorage.commitSession(verifySession),
+      },
+    })
+  } else {
+    const cookieSession = await sessionStorage.getSession(
+      request.headers.get('cookie'),
+    )
+    cookieSession.set(sessionKey, session.id)
+
+    return redirect(safeRedirect(redirectTo), {
+      headers: {
+        'set-cookie': await sessionStorage.commitSession(cookieSession, {
+          expires: remember ? session.expirationDate : undefined,
+        }),
+      },
+    })
+  }
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
