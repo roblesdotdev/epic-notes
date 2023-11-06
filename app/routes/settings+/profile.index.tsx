@@ -130,6 +130,9 @@ export default function EditUserProfile() {
           <Link to="password">Change password</Link>
         </div>
         <div>
+          <Link to="connections">Manage Connections</Link>
+        </div>
+        <div>
           <a
             download="my-epic-notes-data.json"
             href="/resources/download-user-data"

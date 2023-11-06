@@ -137,7 +137,8 @@ async function seed() {
     }),
   })
 
-  const githubUser = await insertGitHubUser('MOCK_GITHUB_CODE_KODY', {
+  // const githubUser = await insertGitHubUser('MOCK_GITHUB_CODE_KODY', {
+  await insertGitHubUser('MOCK_GITHUB_CODE_KODY', {
     primaryEmailAddress: 'kody@kcd.dev',
   })
 
@@ -150,9 +151,9 @@ async function seed() {
       image: { create: kodyImages.kodyUser },
       roles: { connect: [{ name: 'user' }, { name: 'admin' }] },
       password: { create: createPassword('kodypassword') },
-      connections: {
-        create: { providerName: 'github', providerId: githubUser.profile.id },
-      },
+      // connections: {
+      //   create: { providerName: 'github', providerId: githubUser.profile.id },
+      // },
       notes: {
         create: [
           {

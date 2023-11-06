@@ -18,7 +18,7 @@ import { Button } from '~/components/ui/button.tsx'
 import { login, requireAnonymous, sessionKey } from '~/utils/auth.server.ts'
 import { validateCSRF } from '~/utils/csrf.server.ts'
 import { checkHoneypot } from '~/utils/honeypot.server.ts'
-import { invariant, useIsPending } from '~/utils/misc.tsx'
+import { combineResponseInits, invariant, useIsPending } from '~/utils/misc.tsx'
 import { sessionStorage } from '~/utils/session.server.ts'
 import { PasswordSchema, UsernameSchema } from '~/utils/user-validation.ts'
 import { twoFAVerificationType } from '../settings+/profile.two-factor.tsx'
@@ -32,17 +32,20 @@ const verifiedTimeKey = 'verified-time'
 const unverifiedSessionIdKey = 'unverified-session-id'
 const rememberKey = 'remember-me'
 
-export async function handleNewSession({
-  request,
-  session,
-  redirectTo,
-  remember = false,
-}: {
-  request: Request
-  session: { userId: string; id: string; expirationDate: Date }
-  redirectTo?: string
-  remember?: boolean
-}) {
+export async function handleNewSession(
+  {
+    request,
+    session,
+    redirectTo,
+    remember = false,
+  }: {
+    request: Request
+    session: { userId: string; id: string; expirationDate: Date }
+    redirectTo?: string
+    remember?: boolean
+  },
+  responseInit?: ResponseInit,
+) {
   if (await shouldRequestTwoFA({ request, userId: session.userId })) {
     const verifySession = await verifySessionStorage.getSession()
     verifySession.set(unverifiedSessionIdKey, session.id)
@@ -52,24 +55,37 @@ export async function handleNewSession({
       type: twoFAVerificationType,
       target: session.userId,
     })
-    return redirect(redirectUrl.toString(), {
-      headers: {
-        'set-cookie': await verifySessionStorage.commitSession(verifySession),
-      },
-    })
+    return redirect(
+      redirectUrl.toString(),
+      combineResponseInits(
+        {
+          headers: {
+            'set-cookie':
+              await verifySessionStorage.commitSession(verifySession),
+          },
+        },
+        responseInit,
+      ),
+    )
   } else {
     const cookieSession = await sessionStorage.getSession(
       request.headers.get('cookie'),
     )
     cookieSession.set(sessionKey, session.id)
 
-    return redirect(safeRedirect(redirectTo), {
-      headers: {
-        'set-cookie': await sessionStorage.commitSession(cookieSession, {
-          expires: remember ? session.expirationDate : undefined,
-        }),
-      },
-    })
+    return redirect(
+      safeRedirect(redirectTo),
+      combineResponseInits(
+        {
+          headers: {
+            'set-cookie': await sessionStorage.commitSession(cookieSession, {
+              expires: remember ? session.expirationDate : undefined,
+            }),
+          },
+        },
+        responseInit,
+      ),
+    )
   }
 }
 

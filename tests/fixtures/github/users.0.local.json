@@ -3,25 +3,25 @@
     "code": "MOCK_GITHUB_CODE_KODY",
     "accessToken": "MOCK_GITHUB_CODE_KODY_mock_access_token",
     "profile": {
-      "login": "Janessa.Grimes47",
+      "login": "Maritza74",
       "id": "MOCK_GITHUB_CODE_KODY_profile_id",
-      "name": "Wendy Steuber",
+      "name": "Miss Verna Effertz",
       "avatar_url": "https://github.com/ghost.png",
       "emails": [
-        "Adam61@yahoo.com",
-        "Elisa58@gmail.com",
+        "Margret28@gmail.com",
+        "Norene_Crist@gmail.com",
         "kody@kcd.dev"
       ]
     },
     "emails": [
       {
-        "email": "Adam61@yahoo.com",
+        "email": "Margret28@gmail.com",
         "verified": false,
         "primary": false,
         "visibility": "public"
       },
       {
-        "email": "Elisa58@gmail.com",
+        "email": "Norene_Crist@gmail.com",
         "verified": true,
         "primary": false,
         "visibility": null
@@ -30,7 +30,7 @@
         "email": "kody@kcd.dev",
         "verified": true,
         "primary": true,
-        "visibility": "public"
+        "visibility": null
       }
     ],
     "primaryEmail": "kody@kcd.dev"

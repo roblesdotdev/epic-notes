@@ -6,7 +6,7 @@ import {
 } from '~/utils/auth.server.ts'
 import { providerLabels } from '~/utils/connections.tsx'
 import { db } from '~/utils/db.server.ts'
-import { redirectWithToast } from '~/utils/toast.server.ts'
+import { createToastHeaders, redirectWithToast } from '~/utils/toast.server.ts'
 import { handleNewSession } from './login.tsx'
 import { verifySessionStorage } from '~/utils/verification.server.ts'
 import {
@@ -51,14 +51,33 @@ export async function loader({ request }: DataFunctionArgs) {
   }
 
   if (existingConnection) {
-    const session = await db.session.create({
-      select: { id: true, expirationDate: true, userId: true },
-      data: {
-        expirationDate: getSessionExpirationDate(),
-        userId: existingConnection.userId,
-      },
+    return makeSession({ request, userId: existingConnection.userId })
+  }
+
+  // if the email matches a user in the db, then link the account and
+  // make a new session
+  const user = await db.user.findUnique({
+    select: { id: true },
+    where: { email: profile.email.toLowerCase() },
+  })
+  if (user) {
+    await db.connection.create({
+      data: { providerName, providerId: profile.id, userId: user.id },
     })
-    return handleNewSession({ request, session, remember: true })
+    return makeSession(
+      {
+        request,
+        userId: user.id,
+        // send them to the connections page to see their new connection
+        redirectTo: '/settings/profile/connections',
+      },
+      {
+        headers: await createToastHeaders({
+          title: 'Connected',
+          description: `Your "${profile.username}" ${label} account has been connected.`,
+        }),
+      },
+    )
   }
 
   const verifySession = await verifySessionStorage.getSession(
@@ -79,4 +98,26 @@ export async function loader({ request }: DataFunctionArgs) {
       'set-cookie': await verifySessionStorage.commitSession(verifySession),
     },
   })
+}
+
+async function makeSession(
+  {
+    request,
+    userId,
+    redirectTo,
+  }: { request: Request; userId: string; redirectTo?: string | null },
+  responseInit?: ResponseInit,
+) {
+  redirectTo ??= '/'
+  const session = await db.session.create({
+    select: { id: true, expirationDate: true, userId: true },
+    data: {
+      expirationDate: getSessionExpirationDate(),
+      userId,
+    },
+  })
+  return handleNewSession(
+    { request, session, redirectTo, remember: true },
+    responseInit,
+  )
 }
