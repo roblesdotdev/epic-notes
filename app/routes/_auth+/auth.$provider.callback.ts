@@ -1,8 +1,13 @@
 import type { DataFunctionArgs } from '@remix-run/node'
-import { authenticator, getUserId } from '~/utils/auth.server.ts'
+import {
+  authenticator,
+  getSessionExpirationDate,
+  getUserId,
+} from '~/utils/auth.server.ts'
 import { providerLabels } from '~/utils/connections.tsx'
 import { db } from '~/utils/db.server.ts'
 import { redirectWithToast } from '~/utils/toast.server.ts'
+import { handleNewSession } from './login.tsx'
 
 export async function loader({ request }: DataFunctionArgs) {
   const providerName = 'github'
@@ -37,6 +42,17 @@ export async function loader({ request }: DataFunctionArgs) {
           ? `Your "${profile.username}" ${label} account is already connected.`
           : `The "${profile.username}" ${label} account is already connected to another account.`,
     })
+  }
+
+  if (existingConnection) {
+    const session = await db.session.create({
+      select: { id: true, expirationDate: true, userId: true },
+      data: {
+        expirationDate: getSessionExpirationDate(),
+        userId: existingConnection.userId,
+      },
+    })
+    return handleNewSession({ request, session, remember: true })
   }
 
   throw await redirectWithToast('/login', {
