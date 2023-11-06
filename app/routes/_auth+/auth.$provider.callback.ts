@@ -50,6 +50,18 @@ export async function loader({ request }: DataFunctionArgs) {
     })
   }
 
+  // If we're already logged in, then link the account
+  if (userId) {
+    await db.connection.create({
+      data: { providerName, providerId: profile.id, userId },
+    })
+    throw await redirectWithToast('/settings/profile/connections', {
+      title: 'Connected',
+      type: 'success',
+      description: `Your "${profile.username}" ${label} account has been connected.`,
+    })
+  }
+
   if (existingConnection) {
     return makeSession({ request, userId: existingConnection.userId })
   }
