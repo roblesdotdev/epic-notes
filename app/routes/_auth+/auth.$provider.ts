@@ -1,31 +1,17 @@
 import type { DataFunctionArgs } from '@remix-run/node'
 import { redirect } from '@remix-run/node'
-import { createId as cuid } from '@paralleldrive/cuid2'
 import { authenticator } from '~/utils/auth.server.ts'
-import { connectionSessionStorage } from '~/utils/connection.server.ts'
+import { handleMockAction } from '~/utils/connection.server.ts'
+import { ProviderNameSchema } from '~/utils/connections.tsx'
 
 export async function loader() {
   return redirect('/login')
 }
 
-export async function action({ request }: DataFunctionArgs) {
-  const providerName = 'github'
+export async function action({ request, params }: DataFunctionArgs) {
+  const providerName = ProviderNameSchema.parse(params.provider)
 
-  if (process.env.GITHUB_CLIENT_ID?.startsWith('MOCK_')) {
-    const connectionSession = await connectionSessionStorage.getSession(
-      request.headers.get('cookie'),
-    )
-    const state = cuid()
-    connectionSession.set('oauth2:state', state)
-    const code = 'MOCK_GITHUB_CODE_KODY'
-    const searchParams = new URLSearchParams({ code, state })
-    throw redirect(`/auth/github/callback?${searchParams}`, {
-      headers: {
-        'set-cookie':
-          await connectionSessionStorage.commitSession(connectionSession),
-      },
-    })
-  }
+  await handleMockAction(providerName, request)
 
   return await authenticator.authenticate(providerName, request)
 }

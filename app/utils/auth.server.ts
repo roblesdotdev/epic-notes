@@ -1,13 +1,14 @@
 import bcrypt from 'bcryptjs'
 import { Authenticator } from 'remix-auth'
 import { db } from './db.server.ts'
-import type { Password, User } from '@prisma/client'
+import type { Connection, Password, User } from '@prisma/client'
 import { safeRedirect } from 'remix-utils/safe-redirect'
 import { redirect } from '@remix-run/node'
-import { combineResponseInits } from './misc.tsx'
+import { combineResponseInits, downloadFile } from './misc.tsx'
 import { sessionStorage } from './session.server.ts'
 import { connectionSessionStorage, providers } from './connection.server.ts'
 import type { ProviderUser } from './providers/provider.ts'
+import type { ProviderName } from './connections.tsx'
 export { bcrypt }
 
 const SESSION_EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 30
@@ -205,4 +206,41 @@ export async function resetUserPassword({
       },
     },
   })
+}
+
+export async function signupWithConnection({
+  email,
+  username,
+  name,
+  providerId,
+  providerName,
+  imageUrl,
+}: {
+  email: User['email']
+  username: User['username']
+  name: User['name']
+  providerId: Connection['providerId']
+  providerName: ProviderName
+  imageUrl?: string
+}) {
+  const session = await db.session.create({
+    data: {
+      expirationDate: getSessionExpirationDate(),
+      user: {
+        create: {
+          email: email.toLowerCase(),
+          username: username.toLowerCase(),
+          name,
+          roles: { connect: { name: 'user' } },
+          connections: { create: { providerId, providerName } },
+          image: imageUrl
+            ? { create: await downloadFile(imageUrl) }
+            : undefined,
+        },
+      },
+    },
+    select: { id: true, expirationDate: true },
+  })
+
+  return session
 }
