@@ -3,36 +3,36 @@
     "code": "MOCK_GITHUB_CODE_KODY",
     "accessToken": "MOCK_GITHUB_CODE_KODY_mock_access_token",
     "profile": {
-      "login": "Lemuel_Lowe",
+      "login": "Janessa.Grimes47",
       "id": "MOCK_GITHUB_CODE_KODY_profile_id",
-      "name": "Jacob Hermiston",
+      "name": "Wendy Steuber",
       "avatar_url": "https://github.com/ghost.png",
       "emails": [
-        "Arnold_Mohr85@gmail.com",
-        "Nyasia.Stracke@yahoo.com",
-        "Hudson_Erdman3@hotmail.com"
+        "Adam61@yahoo.com",
+        "Elisa58@gmail.com",
+        "kody@kcd.dev"
       ]
     },
     "emails": [
       {
-        "email": "Arnold_Mohr85@gmail.com",
+        "email": "Adam61@yahoo.com",
         "verified": false,
         "primary": false,
         "visibility": "public"
       },
       {
-        "email": "Nyasia.Stracke@yahoo.com",
+        "email": "Elisa58@gmail.com",
         "verified": true,
         "primary": false,
         "visibility": null
       },
       {
-        "email": "Hudson_Erdman3@hotmail.com",
+        "email": "kody@kcd.dev",
         "verified": true,
         "primary": true,
         "visibility": "public"
       }
     ],
-    "primaryEmail": "Hudson_Erdman3@hotmail.com"
+    "primaryEmail": "kody@kcd.dev"
   }
 ]

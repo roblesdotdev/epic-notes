@@ -24,6 +24,7 @@ model User {
   image UserImage?
   roles Role[]
   sessions Session[]
+  connections Connection[]
 }
 
 model Password {
@@ -141,4 +142,20 @@ model Verification {
   expiresAt DateTime?
 
   @@unique([target, type])
+}
+
+model Connection {
+  id           String @id @default(cuid())
+  providerName String
+  providerId   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  @@unique([providerName, providerId])
+  // non-unique foreign key
+  @@index([userId])
 }
