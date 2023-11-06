@@ -132,6 +132,8 @@ export const handlers: Array<HttpHandler> = [
   http.post(
     'https://github.com/login/oauth/access_token',
     async ({ request }) => {
+      // Test error
+      // throw new Error('AAAAAAAAAAAAAAAAAAAAAAAAAAAA')
       if (passthroughGitHub) return passthrough()
       const params = new URLSearchParams(await request.text())
 
