@@ -22,6 +22,7 @@ import { checkHoneypot } from '~/utils/honeypot.server.ts'
 import { useIsPending } from '~/utils/misc.tsx'
 import { EmailSchema } from '~/utils/user-validation.ts'
 import { prepareVerification } from './verify.tsx'
+import { ProviderConnectionForm } from '~/utils/connections.tsx'
 
 export const SignupSchema = z.object({
   email: EmailSchema,
@@ -167,6 +168,9 @@ export default function SignupRoute() {
             Submit
           </StatusButton>
         </Form>
+        <div className="mt-5 flex flex-col gap-5 border-y-2 border-border py-3">
+          <ProviderConnectionForm type="Signup" providerName="github" />
+        </div>
       </div>
     </div>
   )
