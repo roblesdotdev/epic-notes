@@ -1,10 +1,14 @@
 import bcrypt from 'bcryptjs'
+import { Authenticator } from 'remix-auth'
+import { GitHubStrategy } from 'remix-auth-github'
 import { db } from './db.server.ts'
 import type { Password, User } from '@prisma/client'
 import { safeRedirect } from 'remix-utils/safe-redirect'
 import { redirect } from '@remix-run/node'
 import { combineResponseInits } from './misc.tsx'
 import { sessionStorage } from './session.server.ts'
+import { connectionSessionStorage } from './connection.server.ts'
+import { redirectWithToast } from './toast.server.ts'
 
 export { bcrypt }
 
@@ -13,6 +17,46 @@ export const getSessionExpirationDate = () =>
   new Date(Date.now() + SESSION_EXPIRATION_TIME)
 
 export const sessionKey = 'sessionId'
+
+type ProviderUser = {
+  id: string
+  email: string
+  username?: string
+  name?: string
+  imageUrl?: string
+}
+export const authenticator = new Authenticator<ProviderUser>(
+  connectionSessionStorage,
+)
+
+authenticator.use(
+  new GitHubStrategy(
+    {
+      clientID: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      callbackURL: '/auth/github/callback',
+    },
+    async ({ profile }) => {
+      const email = profile.emails[0].value.trim().toLowerCase()
+      if (!email) {
+        throw await redirectWithToast('/login', {
+          title: 'No email found',
+          description: 'Please add a verified email to your GitHub account.',
+        })
+      }
+      const username = profile.displayName
+      const imageUrl = profile.photos[0].value
+      return {
+        email,
+        id: profile.id,
+        username,
+        name: profile.name.givenName,
+        imageUrl,
+      }
+    },
+  ),
+  'github',
+)
 
 export async function getUserId(request: Request) {
   const cookieSession = await sessionStorage.getSession(

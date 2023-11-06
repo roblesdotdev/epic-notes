@@ -26,6 +26,7 @@ import { db } from '~/utils/db.server.ts'
 import { verifySessionStorage } from '~/utils/verification.server.ts'
 import { getRedirectToUrl, type VerifyFunctionArgs } from './verify.tsx'
 import { redirectWithToast } from '~/utils/toast.server.ts'
+import { ProviderConnectionForm } from '~/utils/connections.tsx'
 
 const verifiedTimeKey = 'verified-time'
 const unverifiedSessionIdKey = 'unverified-session-id'
@@ -275,6 +276,9 @@ export default function LoginPage() {
                 </Button>
               </div>
             </Form>
+            <div className="mt-5 flex flex-col gap-5 border-y-2 border-border py-3">
+              <ProviderConnectionForm type="Login" providerName="github" />
+            </div>
             <div className="flex items-center justify-center gap-2 pt-6">
               <span className="text-muted-foreground">New here?</span>
               <Link
