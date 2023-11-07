@@ -307,7 +307,11 @@ export default function LoginPage() {
               </div>
             </Form>
             <div className="mt-5 flex flex-col gap-5 border-y-2 border-border py-3">
-              <ProviderConnectionForm type="Login" providerName="github" />
+              <ProviderConnectionForm
+                type="Login"
+                providerName="github"
+                redirectTo={redirectTo}
+              />
             </div>
             <div className="flex items-center justify-center gap-2 pt-6">
               <span className="text-muted-foreground">New here?</span>
