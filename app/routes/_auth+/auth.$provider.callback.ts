@@ -14,21 +14,39 @@ import {
   prefilledProfileKey,
   providerIdKey,
 } from './onboarding_.$provider.tsx'
+import {
+  destroyRedirectToHeader,
+  getRedirectCookieValue,
+} from '~/utils/redirect-cookie.server.ts'
+import { combineHeaders, combineResponseInits } from '~/utils/misc.tsx'
+
+const destroyRedirectTo = { 'set-cookie': destroyRedirectToHeader }
 
 export async function loader({ request }: DataFunctionArgs) {
   const providerName = 'github'
 
+  const redirectTo = getRedirectCookieValue(request)
   const label = providerLabels[providerName]
 
   const profile = await authenticator
     .authenticate(providerName, request, { throwOnError: true })
     .catch(async error => {
       console.error(error)
-      throw await redirectWithToast('/login', {
-        type: 'error',
-        title: 'Auth Failed',
-        description: `There was an error authenticating with ${label}.`,
-      })
+      const loginRedirect = [
+        '/login',
+        redirectTo ? new URLSearchParams({ redirectTo }) : null,
+      ]
+        .filter(Boolean)
+        .join('?')
+      throw await redirectWithToast(
+        loginRedirect,
+        {
+          title: 'Auth Failed',
+          description: `There was an error authenticating with ${label}.`,
+          type: 'error',
+        },
+        { headers: destroyRedirectTo },
+      )
     })
 
   const existingConnection = await db.connection.findUnique({
@@ -41,13 +59,17 @@ export async function loader({ request }: DataFunctionArgs) {
   const userId = await getUserId(request)
 
   if (existingConnection && userId) {
-    throw await redirectWithToast('/settings/profile/connections', {
-      title: 'Already Connected',
-      description:
-        existingConnection.userId === userId
-          ? `Your "${profile.username}" ${label} account is already connected.`
-          : `The "${profile.username}" ${label} account is already connected to another account.`,
-    })
+    throw await redirectWithToast(
+      '/settings/profile/connections',
+      {
+        title: 'Already Connected',
+        description:
+          existingConnection.userId === userId
+            ? `Your "${profile.username}" ${label} account is already connected.`
+            : `The "${profile.username}" ${label} account is already connected to another account.`,
+      },
+      { headers: destroyRedirectTo },
+    )
   }
 
   // If we're already logged in, then link the account
@@ -55,15 +77,23 @@ export async function loader({ request }: DataFunctionArgs) {
     await db.connection.create({
       data: { providerName, providerId: profile.id, userId },
     })
-    throw await redirectWithToast('/settings/profile/connections', {
-      title: 'Connected',
-      type: 'success',
-      description: `Your "${profile.username}" ${label} account has been connected.`,
-    })
+    throw await redirectWithToast(
+      '/settings/profile/connections',
+      {
+        title: 'Connected',
+        type: 'success',
+        description: `Your "${profile.username}" ${label} account has been connected.`,
+      },
+      { headers: destroyRedirectTo },
+    )
   }
 
   if (existingConnection) {
-    return makeSession({ request, userId: existingConnection.userId })
+    return makeSession({
+      request,
+      userId: existingConnection.userId,
+      redirectTo,
+    })
   }
 
   // if the email matches a user in the db, then link the account and
@@ -81,7 +111,7 @@ export async function loader({ request }: DataFunctionArgs) {
         request,
         userId: user.id,
         // send them to the connections page to see their new connection
-        redirectTo: '/settings/profile/connections',
+        redirectTo: redirectTo ?? '/settings/profile/connections',
       },
       {
         headers: await createToastHeaders({
@@ -105,10 +135,17 @@ export async function loader({ request }: DataFunctionArgs) {
       .padEnd(3, '_'),
   })
   verifySession.set(providerIdKey, profile.id)
-  return redirect(`/onboarding/${providerName}`, {
-    headers: {
-      'set-cookie': await verifySessionStorage.commitSession(verifySession),
-    },
+  const onboardingRedirect = [
+    `/onboarding/${providerName}`,
+    redirectTo ? new URLSearchParams({ redirectTo }) : null,
+  ]
+    .filter(Boolean)
+    .join('?')
+  return redirect(onboardingRedirect, {
+    headers: combineHeaders(
+      { 'set-cookie': await verifySessionStorage.commitSession(verifySession) },
+      destroyRedirectTo,
+    ),
   })
 }
 
@@ -130,6 +167,6 @@ async function makeSession(
   })
   return handleNewSession(
     { request, session, redirectTo, remember: true },
-    responseInit,
+    combineResponseInits({ headers: destroyRedirectTo }, responseInit),
   )
 }
