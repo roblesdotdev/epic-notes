@@ -53,7 +53,16 @@ export async function loader({ request }: DataFunctionArgs) {
     where: { target_type: { type: twoFAVerificationType, target: userId } },
   })
 
-  return json({ user, isTwoFAEnabled: Boolean(twoFactorVerification) })
+  const password = await db.password.findUnique({
+    select: { userId: true },
+    where: { userId },
+  })
+
+  return json({
+    user,
+    hasPassword: Boolean(password),
+    isTwoFAEnabled: Boolean(twoFactorVerification),
+  })
 }
 
 type ProfileActionArgs = {
@@ -127,7 +136,9 @@ export default function EditUserProfile() {
           </Link>
         </div>
         <div>
-          <Link to="password">Change password</Link>
+          <Link to={data.hasPassword ? 'password' : 'password/create'}>
+            {data.hasPassword ? 'Change Password' : 'Create a Password'}
+          </Link>
         </div>
         <div>
           <Link to="connections">Manage Connections</Link>
