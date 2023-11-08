@@ -17,6 +17,7 @@ import {
   useFetcher,
   useFetchers,
   useLoaderData,
+  useMatches,
 } from '@remix-run/react'
 import iconAssetUrl from './assets/favicon.svg'
 import fontStyles from './styles/fonts.css'
@@ -49,6 +50,7 @@ import { db } from './utils/db.server.ts'
 import { useOptionalUser } from './utils/user.ts'
 import { getUserId } from './utils/auth.server.ts'
 import { userHasRole } from './utils/permissions.ts'
+import { SearchBar } from './components/search-bar.tsx'
 
 const ThemeFormSchema = z.object({
   theme: z.enum(['light', 'dark']),
@@ -178,15 +180,22 @@ function App() {
   const theme = useTheme()
   const user = useOptionalUser()
   const userIsAdmin = userHasRole(user, 'admin')
+  const matches = useMatches()
+  const isOnSearchPage = matches.find(m => m.id === 'routes/users+/_index')
 
   return (
     <Document theme={theme} env={data.ENV}>
       <header className="container mx-auto py-6">
-        <nav className="flex justify-between">
+        <nav className="flex items-center justify-between gap-4 sm:gap-6">
           <Link to="/">
             <div className="font-light">epic</div>
             <div className="font-bold">notes</div>
           </Link>
+          {isOnSearchPage ? null : (
+            <div className="ml-auto max-w-sm flex-1">
+              <SearchBar status="idle" />
+            </div>
+          )}
           <div className="flex items-center gap-10">
             {user ? (
               <div className="flex items-center gap-2">
