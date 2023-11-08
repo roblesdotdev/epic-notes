@@ -1,11 +1,12 @@
 import { json, redirect, type DataFunctionArgs } from '@remix-run/node'
-import { Link, useLoaderData } from '@remix-run/react'
+import { useLoaderData } from '@remix-run/react'
 import { z } from 'zod'
 import { GeneralErrorBoundary } from '~/components/error-boundary.tsx'
 import { ErrorList } from '~/components/forms.tsx'
 import { SearchBar } from '~/components/search-bar.tsx'
+import UserCard from '~/components/user-card.tsx'
 import { db } from '~/utils/db.server.ts'
-import { cn, getUserImgSrc, useDelayedIsPending } from '~/utils/misc.tsx'
+import { cn, useDelayedIsPending } from '~/utils/misc.tsx'
 
 const UserSearchResultSchema = z.object({
   id: z.string(),
@@ -59,12 +60,12 @@ export default function UsersRoute() {
   })
 
   return (
-    <div className="container mb-48 mt-36 flex flex-col items-center justify-center gap-6">
+    <div className="container mb-24 mt-12 flex flex-col items-center justify-center gap-6">
       <h1 className="text-h1">Epic Notes Users</h1>
       <div className="w-full max-w-[700px] ">
         <SearchBar status={data.status} autoFocus autoSubmit />
       </div>
-      <main>
+      <main className="mt-8">
         {data.status === 'idle' ? (
           data.users.length ? (
             <ul
@@ -74,26 +75,7 @@ export default function UsersRoute() {
               )}
             >
               {data.users.map(user => (
-                <li key={user.id}>
-                  <Link
-                    to={user.username}
-                    className="flex h-36 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
-                  >
-                    <img
-                      alt={user.name ?? user.username}
-                      src={getUserImgSrc(user.imageId)}
-                      className="h-16 w-16 rounded-full"
-                    />
-                    {user.name ? (
-                      <span className="w-full truncate text-center text-body-md">
-                        {user.name}
-                      </span>
-                    ) : null}
-                    <span className="w-full overflow-hidden text-ellipsis text-center text-body-sm text-muted-foreground">
-                      {user.username}
-                    </span>
-                  </Link>
-                </li>
+                <UserCard key={user.id} user={user} />
               ))}
             </ul>
           ) : (
