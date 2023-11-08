@@ -113,6 +113,9 @@ dependencies:
   react-dom:
     specifier: ^18.2.0
     version: 18.2.0(react@18.2.0)
+  react-wrap-balancer:
+    specifier: ^1.1.0
+    version: 1.1.0(react@18.2.0)
   remix-auth:
     specifier: ^3.6.0
     version: 3.6.0(@remix-run/react@2.1.0)(@remix-run/server-runtime@1.19.3)
@@ -1397,6 +1400,13 @@ packages:
     requiresBuild: true
     dev: true
 
+  /@mswjs/cookies@1.1.0:
+    resolution: {integrity: sha512-0ZcCVQxifZmhwNBoQIrystCb+2sWBY2Zw8lpfJBPCHGCA/HWqehITeCRVIv4VMy8MPlaHo2w2pTHFV2pFfqKPw==}
+    engines: {node: '>=18'}
+    requiresBuild: true
+    dev: true
+    optional: true
+
   /@mswjs/data@0.14.0(typescript@5.2.2):
     resolution: {integrity: sha512-t51a8AWa0g19FPFOc3W4Lw0Lo39iWyTKy4fWJDWORGHjitJRepvbgs7ufm7O30r2ZaFSALhCUVyyocuii0dNqA==}
     dependencies:
@@ -1414,12 +1424,26 @@ packages:
       strict-event-emitter: 0.5.1
       uuid: 8.3.2
     optionalDependencies:
-      msw: 2.0.3(typescript@5.2.2)
+      msw: 2.0.4(typescript@5.2.2)
     transitivePeerDependencies:
       - encoding
       - supports-color
       - typescript
     dev: true
+
+  /@mswjs/interceptors@0.25.10:
+    resolution: {integrity: sha512-5/HOSUmD/GgR8pV4ID7QbpXJZ9HP5x1hItdwT+SFeWfYzg9l/81zrggV9mDWD3w97AiU+0gfrpZHy2LJUFlFSg==}
+    engines: {node: '>=18'}
+    requiresBuild: true
+    dependencies:
+      '@open-draft/deferred-promise': 2.2.0
+      '@open-draft/logger': 0.3.0
+      '@open-draft/until': 2.1.0
+      is-node-process: 1.2.0
+      outvariant: 1.4.0
+      strict-event-emitter: 0.5.1
+    dev: true
+    optional: true
 
   /@mswjs/interceptors@0.25.7:
     resolution: {integrity: sha512-U7iFYs/qU/5jfz1VDpoYz3xqX9nzhsBXw7q923dv6GiGTy+m2ZLhD33L80R/shHOW/YWjeH6k16GbIHGw+bAng==}
@@ -6455,8 +6479,8 @@ packages:
       - encoding
     dev: true
 
-  /msw@2.0.3(typescript@5.2.2):
-    resolution: {integrity: sha512-PFIo99h862DiVazndQmko1vJFNNhog0CYajK6N12ESzeLURYJlUglv9ObzWmRCAN3DRVuq7BUeI+eBgRk7oYaQ==}
+  /msw@2.0.4(typescript@5.2.2):
+    resolution: {integrity: sha512-mYDt0cFUYHofXwLSRl5bbPQ7Tl0GmbH+GWE0HdxwzTHMUh5YCWs1n5FvHmVrNIJSylB9ZIKEjq1BK9MfKgEpgg==}
     engines: {node: '>=18'}
     hasBin: true
     requiresBuild: true
@@ -6469,15 +6493,14 @@ packages:
       '@bundled-es-modules/cookie': 2.0.0
       '@bundled-es-modules/js-levenshtein': 2.0.1
       '@bundled-es-modules/statuses': 1.0.1
-      '@mswjs/cookies': 1.0.0
-      '@mswjs/interceptors': 0.25.7
+      '@mswjs/cookies': 1.1.0
+      '@mswjs/interceptors': 0.25.10
       '@open-draft/until': 2.1.0
       '@types/cookie': 0.4.1
       '@types/js-levenshtein': 1.1.2
       '@types/statuses': 2.0.3
       chalk: 4.1.2
       chokidar: 3.5.3
-      formdata-node: 4.4.1
       graphql: 16.8.1
       headers-polyfill: 4.0.2
       inquirer: 8.2.6
@@ -7443,6 +7466,14 @@ packages:
       invariant: 2.2.4
       react: 18.2.0
       tslib: 2.6.2
+    dev: false
+
+  /react-wrap-balancer@1.1.0(react@18.2.0):
+    resolution: {integrity: sha512-EhF3jOZm5Fjx+Cx41e423qOv2c2aOvXAtym2OHqrGeMUnwERIyNsRBgnfT3plB170JmuYvts8K2KSPEIerKr5A==}
+    peerDependencies:
+      react: '>=16.8.0 || ^17.0.0 || ^18'
+    dependencies:
+      react: 18.2.0
     dev: false
 
   /react@18.2.0:

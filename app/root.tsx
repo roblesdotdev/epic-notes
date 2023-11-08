@@ -192,7 +192,7 @@ function App() {
             <div className="font-bold">notes</div>
           </Link>
           {isOnSearchPage ? null : (
-            <div className="ml-auto max-w-sm flex-1">
+            <div className="ml-auto hidden max-w-sm flex-1 sm:block">
               <SearchBar status="idle" />
             </div>
           )}
@@ -235,13 +235,23 @@ function App() {
         <Outlet />
       </div>
 
-      <div className="container mx-auto flex justify-between">
-        <Link to="/">
+      <div className="container mx-auto mt-32 flex justify-between">
+        <Link to="/" className="hidden xs:block">
           <div className="font-light">epic</div>
           <div className="font-bold">notes</div>
         </Link>
         <div className="flex items-center gap-2">
-          <p>Built with ♥️ by robledotdev</p>
+          <p>
+            Built with ♥️ by{' '}
+            <a
+              href="https://github.com/roblesdotdev"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              roblesdotdev
+            </a>
+          </p>
           <ThemeSwitch userPreference={theme} />
         </div>
       </div>

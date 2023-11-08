@@ -39,9 +39,13 @@ export function ProviderConnectionForm({
       {redirectTo ? (
         <input type="hidden" name="redirectTo" value={redirectTo} />
       ) : null}
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={isPending}
+        variant="secondary"
+      >
         <span className="inline-flex items-center gap-1.5">
-          {providerIcons[providerName]}
           <span>
             {type} with {label}
           </span>

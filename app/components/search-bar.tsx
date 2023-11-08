@@ -51,6 +51,7 @@ export function SearchBar({
       <div>
         <Button
           type="submit"
+          variant="secondary"
           disabled={isSubmitting || status !== 'idle'}
           className="flex w-full items-center justify-center"
           size="sm"
